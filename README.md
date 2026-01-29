@@ -10,20 +10,20 @@ Claude Code doesn't show your 5-hour and weekly rate limits in the UI. This stat
 
 ## Features
 
+- **Context usage** — real-time token consumption with color-coded alerts (blue < 70%, yellow 70-89%, orange ≥ 90%)
 - **Rate limits** — 5-hour and 7-day usage with colored progress bars + time until reset
-- **Real context usage** — shows actual tokens used vs auto-compact threshold (not the full 200k window, but the real ~160k before compaction kicks in)
 - **Model name** — short colored name (Opus4.5, Sonnet4, Haiku)
 - **Directory & Git** — current folder, branch, uncommitted changes count
 
 ## Preview
 
 ```
-Opus4.5 │ my-project (main) 3 │ ▓▓░░░░ 52k/160k │ 5h ▓▓░░░░░░░░ 25% (2:51) │ 7d ▓░░░░░░░░░ 18% (4d)
+Opus4.5 │ my-project (main) ✓ │ Context ▓▓░░░░ 28% 49k/200k │ 5h ▓░░░░░░░░░ 2% (4:11) │ 7d ▓▓░░░░░░░░ 24% (3d)
 ```
 
-- `52k/160k` — you've used 52k tokens, auto-compact triggers at ~160k (80% of 200k)
-- `5h 25% (2:51)` — 25% of 5-hour limit used, resets in 2 hours 51 minutes
-- `7d 18% (4d)` — 18% of weekly limit used, resets in 4 days
+- `Context ▓▓░░░░ 28% 49k/200k` — context bar with percentage and token count
+- `5h 2% (4:11)` — 2% of 5-hour limit used, resets in 4 hours 11 minutes
+- `7d 24% (3d)` — 24% of weekly limit used, resets in 3 days
 
 ## Installation
 
@@ -63,7 +63,10 @@ chmod +x ~/.claude/scripts/*.sh
 Fetches usage data from Anthropic API (`/api/oauth/usage`) using OAuth token from macOS Keychain. Data is cached and refreshed in background every 60 seconds — no lag in your statusline.
 
 ### Context bar
-Reads actual token usage from transcript file and shows progress relative to auto-compact threshold (80% of context window). This means when the bar is full, auto-compact is about to happen — no more guessing!
+Uses `remaining_percentage` directly from Claude Code API to show accurate context usage with color-coded warnings:
+- **Blue** (< 70%) — plenty of context left
+- **Yellow** (70-89%) — approaching limit, be mindful of token usage
+- **Orange** (≥ 90%) — critical, context will auto-compact soon
 
 ## License
 
