@@ -55,6 +55,8 @@ chmod +x ~/.claude/scripts/*.sh
 - `jq` — JSON processor (`brew install jq`)
 - `git` — for repository info
 
+> **Windows users**: See [windows/](windows/) folder for Python version that works on Windows.
+
 ## How it works
 
 ### Rate limits
