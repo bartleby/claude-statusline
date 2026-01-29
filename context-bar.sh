@@ -105,7 +105,7 @@ sep=" ${C_SEP}│${RST} "
 out="${C_MODEL}${BLD}${model}${RST}"
 out+="${sep}${C_DIR}${dir}${RST}"
 [[ -n "$branch" ]] && out+=" ${DIM}(${RST}${C_BRANCH}${branch}${RST}${DIM})${RST} ${git_st}"
-out+="${sep}$(bar $tokens $threshold 6 $C_BAR) ${C_TXT}${tokens}/${ctx_total}${RST}"
+out+="${sep}$(bar $tokens $threshold 6 $C_BAR) ${C_TXT}$((tokens/1000))k/$((ctx_total/1000))k${RST}"
 
 c5=$(lim_color "$h5"); c7=$(lim_color "$d7")
 out+="${sep}${DIM}5h${RST} $(bar ${h5:-0} 100 10 $c5) ${c5}${h5}%${RST} ${DIM}($(time_until "$h5_r"))${RST}"
