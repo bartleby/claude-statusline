@@ -22,7 +22,7 @@ C_HIGH='\033[38;5;208m'
 
 # Parse input JSON once
 input=$(cat)
-read -r model_id cwd transcript_path <<< "$(echo "$input" | jq -r '[.model.id // .model.display_name // "?", .cwd // "", .transcript_path // ""] | @tsv')"
+read -r model_id cwd ctx_used ctx_total <<< "$(echo "$input" | jq -r '[.model.id // .model.display_name // "?", .cwd // "", .context_window.total_input_tokens // 0, .context_window.context_window_size // 0] | @tsv')"
 
 # Short model name
 case "$model_id" in
@@ -35,9 +35,9 @@ case "$model_id" in
     *)                         model="?" ;;
 esac
 
-# Context window (Sonnet 4.5 = 1M, others = 200k)
-[[ -z "$ctx_size" ]] && ctx_size=200000
-threshold=$((ctx_size * 80 / 100))
+# Context window from JSON
+[[ -z "$ctx_total" || "$ctx_total" == "0" ]] && ctx_total=200000
+threshold=$((ctx_total * 80 / 100))
 
 # Directory and git
 dir=$(basename "$cwd" 2>/dev/null)
@@ -52,12 +52,9 @@ if [[ -d "$cwd" ]]; then
     fi
 fi
 
-# Tokens from transcript
-tokens=0
-if [[ -f "$transcript_path" ]]; then
-    tokens=$(jq -s 'map(select(.message.usage and .isSidechain != true and .isApiErrorMessage != true)) | last | if . then (.message.usage.input_tokens // 0) + (.message.usage.cache_read_input_tokens // 0) + (.message.usage.cache_creation_input_tokens // 0) else 0 end' < "$transcript_path" 2>/dev/null)
-    [[ -z "$tokens" || "$tokens" == "null" ]] && tokens=0
-fi
+# Use standard context_window data
+tokens=$ctx_used
+[[ -z "$tokens" || "$tokens" == "null" ]] && tokens=0
 
 # Progress bar builder
 bar() {
@@ -108,7 +105,7 @@ sep=" ${C_SEP}│${RST} "
 out="${C_MODEL}${BLD}${model}${RST}"
 out+="${sep}${C_DIR}${dir}${RST}"
 [[ -n "$branch" ]] && out+=" ${DIM}(${RST}${C_BRANCH}${branch}${RST}${DIM})${RST} ${git_st}"
-out+="${sep}$(bar $tokens $threshold 6 $C_BAR) ${C_TXT}$((tokens/1000))k/$((threshold/1000))k${RST}"
+out+="${sep}$(bar $tokens $threshold 6 $C_BAR) ${C_TXT}${tokens}/${ctx_total}${RST}"
 
 c5=$(lim_color "$h5"); c7=$(lim_color "$d7")
 out+="${sep}${DIM}5h${RST} $(bar ${h5:-0} 100 10 $c5) ${c5}${h5}%${RST} ${DIM}($(time_until "$h5_r"))${RST}"
