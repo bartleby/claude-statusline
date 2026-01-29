@@ -49,7 +49,7 @@ Same as macOS version:
 ## Preview
 
 ```
-Opus4.5 │ my-project (main) ✓ │ Context ▓▓░░░░ 28% 49k/200k │ 5h ▓░░░░░░░░░ 2% (4:11) │ 7d ▓▓░░░░░░░░ 24% (3d)
+Opus4.5 │ my-project (main) ✓ │ Ctx ▓▓░░░░░░ 28% 49k/200k │ 5h ▓░░░░░░░ 2% (4:11) │ 7d ▓▓░░░░░░ 24% (3d)
 ```
 
 ## How credentials are retrieved
