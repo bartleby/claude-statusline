@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Claude Code Status Line for Windows
-Format: Model | Dir (branch) n | ▓▓░░ 50k/160k | 5h ▓▓░░ 25% (3:01) | 7d ▓░░░ 18% (4d)
+Format: Model | Dir (branch) n | Context ▓▓░░░░ 28% 49k/200k | 5h ▓░░░░░░░░░ 2% (4:11) | 7d ▓▓░░░░░░░░ 24% (3d)
 """
 
 import sys
@@ -78,37 +78,21 @@ def get_git_info(cwd: str) -> tuple[str, str]:
         return '', ''
 
 
-def get_tokens(transcript_path: str) -> int:
-    """Read token count from transcript file."""
-    if not transcript_path or not os.path.isfile(transcript_path):
-        return 0
-    try:
-        with open(transcript_path, 'r', encoding='utf-8') as f:
-            content = f.read()
+def get_context_info(data: dict) -> tuple[int, int, int, int]:
+    """Extract context info from Claude Code JSON.
+    Returns: (tokens_used, context_size, used_percentage, remaining_percentage)
+    """
+    context_window = data.get('context_window', {})
 
-        # Parse JSONL - each line is a separate JSON object
-        messages = []
-        for line in content.strip().split('\n'):
-            if line.strip():
-                try:
-                    messages.append(json.loads(line))
-                except json.JSONDecodeError:
-                    continue
+    total_input = context_window.get('total_input_tokens', 0)
+    total_output = context_window.get('total_output_tokens', 0)
+    tokens_used = total_input + total_output
 
-        # Find last message with usage info (not sidechain, not error)
-        for msg in reversed(messages):
-            if msg.get('isSidechain') or msg.get('isApiErrorMessage'):
-                continue
-            usage = msg.get('message', {}).get('usage', {})
-            if usage:
-                return (
-                    usage.get('input_tokens', 0) +
-                    usage.get('cache_read_input_tokens', 0) +
-                    usage.get('cache_creation_input_tokens', 0)
-                )
-        return 0
-    except Exception:
-        return 0
+    ctx_size = context_window.get('context_window_size', 200000)
+    used_pct = context_window.get('used_percentage', 0)
+    remaining_pct = context_window.get('remaining_percentage', 0)
+
+    return tokens_used, ctx_size, used_pct, remaining_pct
 
 
 def bar(val: int, max_val: int, length: int, color: str) -> str:
@@ -210,11 +194,9 @@ def main():
     model_info = data.get('model', {})
     model_id = model_info.get('id') or model_info.get('display_name') or '?'
     cwd = data.get('cwd', '')
-    transcript_path = data.get('transcript_path', '')
 
-    # Model name and context size
-    model, ctx_size = get_short_model(model_id)
-    threshold = ctx_size * 80 // 100
+    # Model name
+    model, _ = get_short_model(model_id)
 
     # Directory
     dir_name = os.path.basename(cwd) if cwd else '?'
@@ -222,8 +204,15 @@ def main():
     # Git info
     branch, git_st = get_git_info(cwd)
 
-    # Tokens
-    tokens = get_tokens(transcript_path)
+    # Context info from Claude Code API
+    tokens, ctx_size, used_pct, remaining_pct = get_context_info(data)
+
+    # Determine color based on usage
+    ctx_color = C_BAR
+    if used_pct >= 90:
+        ctx_color = C_HIGH
+    elif used_pct >= 70:
+        ctx_color = C_WARN
 
     # Usage limits
     h5, d7, h5_r, d7_r = get_usage_cache()
@@ -237,7 +226,8 @@ def main():
     if branch:
         out += f' {DIM}({RST}{C_BRANCH}{branch}{RST}{DIM}){RST} {git_st}'
 
-    out += f'{sep}{bar(tokens, threshold, 6, C_BAR)} {C_TXT}{tokens // 1000}k/{threshold // 1000}k{RST}'
+    # Context bar with real percentage
+    out += f'{sep}{DIM}Context{RST} {bar(used_pct, 100, 6, ctx_color)} {C_TXT}{used_pct}%{RST} {DIM}{tokens // 1000}k/{ctx_size // 1000}k{RST}'
 
     c5 = lim_color(h5)
     c7 = lim_color(d7)
