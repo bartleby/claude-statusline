@@ -1,6 +1,6 @@
 #!/bin/bash
 # Claude Code Status Line
-# Format: Model │ Dir (branch) n │ ▓▓░░ 50k/160k │ 5h ▓▓░░ 25% (3:01) │ 7d ▓░░░ 18% (4d)
+# Format: Model │ Dir (branch) n │ Context ▓▓░░░░ 28% 49k/200k │ 5h ▓░░░ 2% (4:11) │ 7d ▓▓░░ 24% (3d)
 
 export LC_ALL=C
 
@@ -28,7 +28,7 @@ read -r model_id cwd ctx_used ctx_total ctx_remaining_pct <<< "$(echo "$input" |
 case "$model_id" in
     *opus*4*5*|*Opus*4.5*)     model="Opus4.5" ;;
     *opus*4*|*Opus*4*)         model="Opus4" ;;
-    *sonnet*4*5*|*Sonnet*4.5*) model="Sonnet4.5"; ctx_size=1000000 ;;
+    *sonnet*4*5*|*Sonnet*4.5*) model="Sonnet4.5" ;;
     *sonnet*4*|*Sonnet*4*)     model="Sonnet4" ;;
     *sonnet*|*Sonnet*)         model="Sonnet" ;;
     *haiku*|*Haiku*)           model="Haiku" ;;
@@ -51,13 +51,14 @@ if [[ -d "$cwd" ]]; then
     fi
 fi
 
-# Use standard context_window data
-tokens=$ctx_used
-[[ -z "$tokens" || "$tokens" == "null" ]] && tokens=0
+# Defaults for context data
+[[ -z "$ctx_used" || "$ctx_used" == "null" ]] && ctx_used=0
+[[ -z "$ctx_remaining_pct" || "$ctx_remaining_pct" == "null" ]] && ctx_remaining_pct=0
 
 # Progress bar builder
 bar() {
     local val=$1 max=$2 len=$3 color=$4
+    [[ $max -le 0 ]] && max=1
     local filled=$((val * len / max))
     [[ $filled -gt $len ]] && filled=$len
     local b=""
@@ -105,16 +106,15 @@ out="${C_MODEL}${BLD}${model}${RST}"
 out+="${sep}${C_DIR}${dir}${RST}"
 [[ -n "$branch" ]] && out+=" ${DIM}(${RST}${C_BRANCH}${branch}${RST}${DIM})${RST} ${git_st}"
 
-# Context bars (from Claude Code's actual data)
+# Context bar (from Claude Code's actual data)
 ctx_used_pct=$((100 - ctx_remaining_pct))
-ctx_remaining_pct=${ctx_remaining_pct:-0}
 
-# Choose color based on remaining context
-compact_color="$C_BAR"
-[[ $ctx_used_pct -ge 90 ]] && compact_color="$C_HIGH" || { [[ $ctx_used_pct -ge 70 ]] && compact_color="$C_WARN"; }
+# Choose color based on usage
+ctx_color="$C_BAR"
+[[ $ctx_used_pct -ge 90 ]] && ctx_color="$C_HIGH" || { [[ $ctx_used_pct -ge 70 ]] && ctx_color="$C_WARN"; }
 
-# Context usage bar (shows actual percentage from Claude Code)
-out+="${sep}${DIM}Context${RST} $(bar $ctx_used_pct 100 6 $compact_color) ${C_TXT}${ctx_used_pct}%${RST} ${DIM}$((tokens/1000))k/$((ctx_total/1000))k${RST}"
+# Context usage bar
+out+="${sep}${DIM}Context${RST} $(bar $ctx_used_pct 100 6 $ctx_color) ${C_TXT}${ctx_used_pct}%${RST} ${DIM}$((ctx_used/1000))k/$((ctx_total/1000))k${RST}"
 
 c5=$(lim_color "$h5"); c7=$(lim_color "$d7")
 out+="${sep}${DIM}5h${RST} $(bar ${h5:-0} 100 10 $c5) ${c5}${h5}%${RST} ${DIM}($(time_until "$h5_r"))${RST}"

@@ -35,22 +35,22 @@ C_WARN = '\033[38;5;220m'
 C_HIGH = '\033[38;5;208m'
 
 
-def get_short_model(model_id: str) -> tuple[str, int]:
-    """Return short model name and context size."""
+def get_short_model(model_id: str) -> str:
+    """Return short model name."""
     model_id = model_id.lower()
     if 'opus' in model_id and ('4.5' in model_id or '4-5' in model_id):
-        return 'Opus4.5', 200000
+        return 'Opus4.5'
     if 'opus' in model_id and '4' in model_id:
-        return 'Opus4', 200000
+        return 'Opus4'
     if 'sonnet' in model_id and ('4.5' in model_id or '4-5' in model_id):
-        return 'Sonnet4.5', 1000000
+        return 'Sonnet4.5'
     if 'sonnet' in model_id and '4' in model_id:
-        return 'Sonnet4', 200000
+        return 'Sonnet4'
     if 'sonnet' in model_id:
-        return 'Sonnet', 200000
+        return 'Sonnet'
     if 'haiku' in model_id:
-        return 'Haiku', 200000
-    return '?', 200000
+        return 'Haiku'
+    return '?'
 
 
 def get_git_info(cwd: str) -> tuple[str, str]:
@@ -78,9 +78,9 @@ def get_git_info(cwd: str) -> tuple[str, str]:
         return '', ''
 
 
-def get_context_info(data: dict) -> tuple[int, int, int, int]:
+def get_context_info(data: dict) -> tuple[int, int, int]:
     """Extract context info from Claude Code JSON.
-    Returns: (tokens_used, context_size, used_percentage, remaining_percentage)
+    Returns: (tokens_used, context_size, remaining_percentage)
     """
     context_window = data.get('context_window', {})
 
@@ -89,10 +89,9 @@ def get_context_info(data: dict) -> tuple[int, int, int, int]:
     tokens_used = total_input + total_output
 
     ctx_size = context_window.get('context_window_size', 200000)
-    used_pct = context_window.get('used_percentage', 0)
     remaining_pct = context_window.get('remaining_percentage', 0)
 
-    return tokens_used, ctx_size, used_pct, remaining_pct
+    return tokens_used, ctx_size, remaining_pct
 
 
 def bar(val: int, max_val: int, length: int, color: str) -> str:
@@ -196,7 +195,7 @@ def main():
     cwd = data.get('cwd', '')
 
     # Model name
-    model, _ = get_short_model(model_id)
+    model = get_short_model(model_id)
 
     # Directory
     dir_name = os.path.basename(cwd) if cwd else '?'
@@ -205,7 +204,8 @@ def main():
     branch, git_st = get_git_info(cwd)
 
     # Context info from Claude Code API
-    tokens, ctx_size, used_pct, remaining_pct = get_context_info(data)
+    tokens, ctx_size, remaining_pct = get_context_info(data)
+    used_pct = 100 - remaining_pct
 
     # Determine color based on usage
     ctx_color = C_BAR
