@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Claude Code Status Line for Windows
-Format: Model | Dir (branch) n | Context ▓▓░░░░ 28% 49k/200k | 5h ▓░░░░░░░░░ 2% (4:11) | 7d ▓▓░░░░░░░░ 24% (3d)
+Format: Model | Dir (branch) n | Ctx ▓▓░░░░░░ 28% 49k/200k | 5h ▓░░░░░░░ 2% (4:11) | 7d ▓▓░░░░░░ 24% (3d)
 """
 
 import sys
@@ -227,15 +227,15 @@ def main():
         out += f' {DIM}({RST}{C_BRANCH}{branch}{RST}{DIM}){RST} {git_st}'
 
     # Context bar with real percentage
-    out += f'{sep}{DIM}Context{RST} {bar(used_pct, 100, 6, ctx_color)} {C_TXT}{used_pct}%{RST} {DIM}{tokens // 1000}k/{ctx_size // 1000}k{RST}'
+    out += f'{sep}{DIM}Ctx{RST} {bar(used_pct, 100, 8, ctx_color)} {C_TXT}{used_pct}%{RST} {DIM}{tokens // 1000}k/{ctx_size // 1000}k{RST}'
 
     c5 = lim_color(h5)
     c7 = lim_color(d7)
     h5_val = int(h5) if h5 != '?' else 0
     d7_val = int(d7) if d7 != '?' else 0
 
-    out += f'{sep}{DIM}5h{RST} {bar(h5_val, 100, 10, c5)} {c5}{h5}%{RST} {DIM}({time_until(h5_r)}){RST}'
-    out += f'{sep}{DIM}7d{RST} {bar(d7_val, 100, 10, c7)} {c7}{d7}%{RST} {DIM}({time_until(d7_r)}){RST}'
+    out += f'{sep}{DIM}5h{RST} {bar(h5_val, 100, 8, c5)} {c5}{h5}%{RST} {DIM}({time_until(h5_r)}){RST}'
+    out += f'{sep}{DIM}7d{RST} {bar(d7_val, 100, 8, c7)} {c7}{d7}%{RST} {DIM}({time_until(d7_r)}){RST}'
 
     print(out)
 
