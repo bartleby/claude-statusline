@@ -41,15 +41,15 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/bartleby/claude-status
 
 Same as macOS version:
 
+- **Context usage** — real-time token consumption with color-coded alerts (blue < 70%, yellow 70-89%, orange ≥ 90%)
 - **Rate limits** — 5-hour and 7-day usage with colored progress bars + time until reset
-- **Real context usage** — actual tokens vs auto-compact threshold
 - **Model name** — short colored name (Opus4.5, Sonnet4, Haiku)
 - **Directory & Git** — current folder, branch, uncommitted changes count
 
 ## Preview
 
 ```
-Opus4.5 │ my-project (main) 3 │ ▓▓░░░░ 52k/160k │ 5h ▓▓░░░░░░░░ 25% (2:51) │ 7d ▓░░░░░░░░░ 18% (4d)
+Opus4.5 │ my-project (main) ✓ │ Context ▓▓░░░░ 28% 49k/200k │ 5h ▓░░░░░░░░░ 2% (4:11) │ 7d ▓▓░░░░░░░░ 24% (3d)
 ```
 
 ## How credentials are retrieved
@@ -114,11 +114,11 @@ $env:TERM = "xterm-256color"
 ## How it works
 
 1. **context-bar.py** — Main statusline script
-   - Reads JSON input from Claude Code (model, cwd, transcript path)
-   - Parses transcript for token usage
+   - Reads JSON input from Claude Code (model, cwd, context_window data)
+   - Uses `remaining_percentage` directly from Claude Code API
    - Gets git branch and status
    - Reads cached rate limits
-   - Outputs formatted statusline with ANSI colors
+   - Outputs formatted statusline with ANSI colors and color-coded context bar
 
 2. **update-usage-cache.py** — Background cache updater
    - Fetches usage from `https://api.anthropic.com/api/oauth/usage`
