@@ -1,0 +1,117 @@
+#!/bin/bash
+# Claude Code Status Line
+# Format: Model │ Dir (branch) n │ ▓▓░░ 50k/160k │ 5h ▓▓░░ 25% (3:01) │ 7d ▓░░░ 18% (4d)
+
+export LC_ALL=C
+
+# Colors
+RST='\033[0m'
+BLD='\033[1m'
+DIM='\033[2m'
+C_MODEL='\033[38;5;141m'
+C_DIR='\033[38;5;75m'
+C_BRANCH='\033[38;5;114m'
+C_DIRTY='\033[38;5;208m'
+C_BAR='\033[38;5;75m'
+C_BAR_E='\033[38;5;238m'
+C_TXT='\033[38;5;252m'
+C_SEP='\033[38;5;240m'
+C_OK='\033[38;5;114m'
+C_WARN='\033[38;5;220m'
+C_HIGH='\033[38;5;208m'
+
+# Parse input JSON once
+input=$(cat)
+read -r model_id cwd transcript_path <<< "$(echo "$input" | jq -r '[.model.id // .model.display_name // "?", .cwd // "", .transcript_path // ""] | @tsv')"
+
+# Short model name
+case "$model_id" in
+    *opus*4*5*|*Opus*4.5*)     model="Opus4.5" ;;
+    *opus*4*|*Opus*4*)         model="Opus4" ;;
+    *sonnet*4*5*|*Sonnet*4.5*) model="Sonnet4.5"; ctx_size=1000000 ;;
+    *sonnet*4*|*Sonnet*4*)     model="Sonnet4" ;;
+    *sonnet*|*Sonnet*)         model="Sonnet" ;;
+    *haiku*|*Haiku*)           model="Haiku" ;;
+    *)                         model="?" ;;
+esac
+
+# Context window (Sonnet 4.5 = 1M, others = 200k)
+[[ -z "$ctx_size" ]] && ctx_size=200000
+threshold=$((ctx_size * 80 / 100))
+
+# Directory and git
+dir=$(basename "$cwd" 2>/dev/null)
+[[ -z "$dir" ]] && dir="?"
+
+branch="" git_st=""
+if [[ -d "$cwd" ]]; then
+    branch=$(git -C "$cwd" branch --show-current 2>/dev/null)
+    if [[ -n "$branch" ]]; then
+        changes=$(git -C "$cwd" --no-optional-locks status --porcelain 2>/dev/null | wc -l | tr -d ' ')
+        [[ "$changes" -gt 0 ]] && git_st="${C_DIRTY}${changes}${RST}" || git_st="${C_OK}✓${RST}"
+    fi
+fi
+
+# Tokens from transcript
+tokens=0
+if [[ -f "$transcript_path" ]]; then
+    tokens=$(jq -s 'map(select(.message.usage and .isSidechain != true and .isApiErrorMessage != true)) | last | if . then (.message.usage.input_tokens // 0) + (.message.usage.cache_read_input_tokens // 0) + (.message.usage.cache_creation_input_tokens // 0) else 0 end' < "$transcript_path" 2>/dev/null)
+    [[ -z "$tokens" || "$tokens" == "null" ]] && tokens=0
+fi
+
+# Progress bar builder
+bar() {
+    local val=$1 max=$2 len=$3 color=$4
+    local filled=$((val * len / max))
+    [[ $filled -gt $len ]] && filled=$len
+    local b=""
+    for ((i=0; i<len; i++)); do
+        [[ $i -lt $filled ]] && b+="${color}▓${RST}" || b+="${C_BAR_E}░${RST}"
+    done
+    echo "$b"
+}
+
+# Time until reset
+time_until() {
+    local t=$1
+    [[ -z "$t" || "$t" == "null" ]] && { echo "?"; return; }
+    local ts=$(date -j -u -f "%Y-%m-%dT%H:%M:%S" "${t%%.*}" "+%s" 2>/dev/null)
+    [[ -z "$ts" ]] && { echo "?"; return; }
+    local d=$((ts - $(date -u +%s)))
+    if [[ $d -le 0 ]]; then echo "0:00"
+    elif [[ $d -lt 86400 ]]; then printf "%d:%02d" $((d/3600)) $(((d%3600)/60))
+    else echo "$((d/86400))d"
+    fi
+}
+
+# Limit color
+lim_color() {
+    [[ "$1" == "?" ]] && { echo "$DIM"; return; }
+    [[ $1 -lt 50 ]] && echo "$C_OK" || { [[ $1 -lt 80 ]] && echo "$C_WARN" || echo "$C_HIGH"; }
+}
+
+# Usage limits from cache
+cache="${HOME}/.claude/usage_cache"
+h5="?" d7="?" h5_r="" d7_r=""
+if [[ -f "$cache" ]]; then
+    age=$(( $(date +%s) - $(stat -f %m "$cache" 2>/dev/null || echo 0) ))
+    read -r h5 d7 h5_r d7_r < "$cache" 2>/dev/null
+    [[ -z "$h5" ]] && h5="?"
+    [[ -z "$d7" ]] && d7="?"
+    [[ $age -gt 60 ]] && nohup "${HOME}/.claude/scripts/update-usage-cache.sh" >/dev/null 2>&1 &
+else
+    nohup "${HOME}/.claude/scripts/update-usage-cache.sh" >/dev/null 2>&1 &
+fi
+
+# Build output
+sep=" ${C_SEP}│${RST} "
+out="${C_MODEL}${BLD}${model}${RST}"
+out+="${sep}${C_DIR}${dir}${RST}"
+[[ -n "$branch" ]] && out+=" ${DIM}(${RST}${C_BRANCH}${branch}${RST}${DIM})${RST} ${git_st}"
+out+="${sep}$(bar $tokens $threshold 6 $C_BAR) ${C_TXT}$((tokens/1000))k/$((threshold/1000))k${RST}"
+
+c5=$(lim_color "$h5"); c7=$(lim_color "$d7")
+out+="${sep}${DIM}5h${RST} $(bar ${h5:-0} 100 10 $c5) ${c5}${h5}%${RST} ${DIM}($(time_until "$h5_r"))${RST}"
+out+="${sep}${DIM}7d${RST} $(bar ${d7:-0} 100 10 $c7) ${c7}${d7}%${RST} ${DIM}($(time_until "$d7_r"))${RST}"
+
+printf '%b\n' "$out"
