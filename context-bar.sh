@@ -22,7 +22,7 @@ C_HIGH='\033[38;5;208m'
 
 # Parse input JSON once
 input=$(cat)
-read -r model_id cwd ctx_used ctx_total <<< "$(echo "$input" | jq -r '[.model.id // .model.display_name // "?", .cwd // "", .context_window.total_input_tokens // 0, .context_window.context_window_size // 0] | @tsv')"
+read -r model_id cwd ctx_used ctx_total <<< "$(echo "$input" | jq -r '[.model.id // .model.display_name // "?", .cwd // "", (.context_window.total_input_tokens // 0) + (.context_window.total_output_tokens // 0), .context_window.context_window_size // 0] | @tsv')"
 
 # Short model name
 case "$model_id" in
