@@ -22,7 +22,7 @@ C_HIGH='\033[38;5;208m'
 
 # Parse input JSON once
 input=$(cat)
-read -r model_id cwd ctx_used ctx_total ctx_pct <<< "$(echo "$input" | jq -r '[.model.id // .model.display_name // "?", .cwd // "", (.context_window.total_input_tokens // 0) + (.context_window.total_output_tokens // 0), .context_window.context_window_size // 0, .context_window.used_percentage // 0] | @tsv')"
+read -r model_id cwd ctx_used ctx_total <<< "$(echo "$input" | jq -r '[.model.id // .model.display_name // "?", .cwd // "", (.context_window.total_input_tokens // 0) + (.context_window.total_output_tokens // 0), .context_window.context_window_size // 0] | @tsv')"
 
 # Short model name
 case "$model_id" in
@@ -37,7 +37,6 @@ esac
 
 # Context window from JSON
 [[ -z "$ctx_total" || "$ctx_total" == "0" ]] && ctx_total=200000
-[[ -z "$ctx_pct" ]] && ctx_pct=0
 
 # Directory and git
 dir=$(basename "$cwd" 2>/dev/null)
@@ -105,6 +104,7 @@ sep=" ${C_SEP}│${RST} "
 out="${C_MODEL}${BLD}${model}${RST}"
 out+="${sep}${C_DIR}${dir}${RST}"
 [[ -n "$branch" ]] && out+=" ${DIM}(${RST}${C_BRANCH}${branch}${RST}${DIM})${RST} ${git_st}"
+ctx_pct=$((tokens * 100 / ctx_total))
 out+="${sep}$(bar $ctx_pct 100 6 $C_BAR) ${C_TXT}$((tokens/1000))k/$((ctx_total/1000))k${RST}"
 
 c5=$(lim_color "$h5"); c7=$(lim_color "$d7")
