@@ -18,10 +18,10 @@ Claude Code doesn't show your 5-hour and weekly rate limits in the UI. This stat
 ## Preview
 
 ```
-Opus4.5 │ my-project (main) ✓ │ Context ▓▓░░░░ 28% 49k/200k │ 5h ▓░░░░░░░░░ 2% (4:11) │ 7d ▓▓░░░░░░░░ 24% (3d)
+Opus4.5 │ my-project (main) ✓ │ Ctx ▓▓░░░░░░ 28% 49k/200k │ 5h ▓░░░░░░░ 2% (4:11) │ 7d ▓▓░░░░░░ 24% (3d)
 ```
 
-- `Context ▓▓░░░░ 28% 49k/200k` — context bar with percentage and token count
+- `Ctx ▓▓░░░░░░ 28% 49k/200k` — context bar with percentage and token count
 - `5h 2% (4:11)` — 2% of 5-hour limit used, resets in 4 hours 11 minutes
 - `7d 24% (3d)` — 24% of weekly limit used, resets in 3 days
 
