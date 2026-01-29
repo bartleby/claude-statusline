@@ -22,7 +22,7 @@ C_HIGH='\033[38;5;208m'
 
 # Parse input JSON once
 input=$(cat)
-read -r model_id cwd ctx_used ctx_total <<< "$(echo "$input" | jq -r '[.model.id // .model.display_name // "?", .cwd // "", (.context_window.total_input_tokens // 0) + (.context_window.total_output_tokens // 0), .context_window.context_window_size // 0] | @tsv')"
+read -r model_id cwd ctx_used ctx_total ctx_remaining_pct <<< "$(echo "$input" | jq -r '[.model.id // .model.display_name // "?", .cwd // "", (.context_window.total_input_tokens // 0) + (.context_window.total_output_tokens // 0), .context_window.context_window_size // 0, .context_window.remaining_percentage // 0] | @tsv')"
 
 # Short model name
 case "$model_id" in
@@ -105,21 +105,16 @@ out="${C_MODEL}${BLD}${model}${RST}"
 out+="${sep}${C_DIR}${dir}${RST}"
 [[ -n "$branch" ]] && out+=" ${DIM}(${RST}${C_BRANCH}${branch}${RST}${DIM})${RST} ${git_st}"
 
-# Context bars
-ctx_pct=$((tokens * 100 / ctx_total))
-ctx_compact_threshold=$((ctx_total * 80 / 100))
-ctx_compact_pct=$((tokens * 100 / ctx_compact_threshold))
-[[ $ctx_compact_pct -gt 100 ]] && ctx_compact_pct=100
+# Context bars (from Claude Code's actual data)
+ctx_used_pct=$((100 - ctx_remaining_pct))
+ctx_remaining_pct=${ctx_remaining_pct:-0}
 
-# Choose color for compact bar based on usage
+# Choose color based on remaining context
 compact_color="$C_BAR"
-[[ $ctx_compact_pct -ge 90 ]] && compact_color="$C_HIGH" || { [[ $ctx_compact_pct -ge 70 ]] && compact_color="$C_WARN"; }
+[[ $ctx_used_pct -ge 90 ]] && compact_color="$C_HIGH" || { [[ $ctx_used_pct -ge 70 ]] && compact_color="$C_WARN"; }
 
-# Full window bar (actual usage 0-200k)
-out+="${sep}${DIM}Full${RST} $(bar $ctx_pct 100 4 $C_BAR) ${C_TXT}${ctx_pct}%${RST}"
-
-# Compact threshold bar (recommended usage 0-160k)
-out+="${sep}${DIM}Auto${RST} $(bar $ctx_compact_pct 100 4 $compact_color) ${C_TXT}${ctx_compact_pct}%${RST} ${DIM}$((tokens/1000))k/$((ctx_compact_threshold/1000))k${RST}"
+# Context usage bar (shows actual percentage from Claude Code)
+out+="${sep}${DIM}Context${RST} $(bar $ctx_used_pct 100 6 $compact_color) ${C_TXT}${ctx_used_pct}%${RST} ${DIM}$((tokens/1000))k/$((ctx_total/1000))k${RST}"
 
 c5=$(lim_color "$h5"); c7=$(lim_color "$d7")
 out+="${sep}${DIM}5h${RST} $(bar ${h5:-0} 100 10 $c5) ${c5}${h5}%${RST} ${DIM}($(time_until "$h5_r"))${RST}"
