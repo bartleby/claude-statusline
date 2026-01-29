@@ -227,7 +227,7 @@ def main():
         out += f' {DIM}({RST}{C_BRANCH}{branch}{RST}{DIM}){RST} {git_st}'
 
     # Context bar with real percentage
-    out += f'{sep}{DIM}Ctx{RST} {bar(used_pct, 100, 8, ctx_color)} {C_TXT}{used_pct}%{RST} {DIM}{tokens // 1000}k/{ctx_size // 1000}k{RST}'
+    out += f'{sep}{DIM}Ctx{RST} {bar(used_pct, 100, 8, ctx_color)} {ctx_color}{used_pct}%{RST} {DIM}{tokens // 1000}k/{ctx_size // 1000}k{RST}'
 
     c5 = lim_color(h5)
     c7 = lim_color(d7)
