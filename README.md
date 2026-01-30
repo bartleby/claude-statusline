@@ -1,6 +1,6 @@
 # Claude Code Statusline
 
-Compact, colorful status line for [Claude Code](https://claude.ai/code) CLI **with real-time rate limits**.
+Compact, colorful status line for [Claude Code](https://claude.ai/code) CLI showing **5-hour & 7-day rate limits**, context usage, model and git info in real time.
 
 ![Preview](preview.png)
 
