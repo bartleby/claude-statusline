@@ -54,6 +54,8 @@ fi
 # Defaults for context data
 [[ -z "$ctx_used" || "$ctx_used" == "null" ]] && ctx_used=0
 [[ -z "$ctx_remaining_pct" || "$ctx_remaining_pct" == "null" ]] && ctx_remaining_pct=0
+# If no tokens used, context is empty (0% used), not full (100% used)
+[[ "$ctx_used" -eq 0 ]] && ctx_remaining_pct=100
 
 # Progress bar builder
 bar() {
@@ -61,6 +63,7 @@ bar() {
     [[ $max -le 0 ]] && max=1
     local filled=$((val * len / max))
     [[ $filled -gt $len ]] && filled=$len
+    [[ $val -gt 0 && $filled -eq 0 ]] && filled=1
     local b=""
     for ((i=0; i<len; i++)); do
         [[ $i -lt $filled ]] && b+="${color}▓${RST}" || b+="${C_BAR_E}░${RST}"

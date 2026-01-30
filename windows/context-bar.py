@@ -91,6 +91,10 @@ def get_context_info(data: dict) -> tuple[int, int, int]:
     ctx_size = context_window.get('context_window_size', 200000)
     remaining_pct = context_window.get('remaining_percentage', 0)
 
+    # If no tokens used, context is empty (0% used), not full (100% used)
+    if tokens_used == 0:
+        remaining_pct = 100
+
     return tokens_used, ctx_size, remaining_pct
 
 
@@ -99,6 +103,8 @@ def bar(val: int, max_val: int, length: int, color: str) -> str:
     if max_val <= 0:
         return f'{C_BAR_E}{"░" * length}{RST}'
     filled = min(val * length // max_val, length)
+    if val > 0 and filled == 0:
+        filled = 1
     return ''.join(
         f'{color}▓{RST}' if i < filled else f'{C_BAR_E}░{RST}'
         for i in range(length)
