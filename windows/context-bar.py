@@ -212,6 +212,8 @@ def main():
     # Context info from Claude Code API
     tokens, ctx_size, remaining_pct = get_context_info(data)
     used_pct = 100 - remaining_pct
+    # Derive tokens from API percentage (input+output tokens undercount due to system prompts, cache, etc.)
+    tokens_display = ctx_size * used_pct // 100
 
     # Determine color based on usage
     ctx_color = C_BAR
@@ -233,7 +235,7 @@ def main():
         out += f' {DIM}({RST}{C_BRANCH}{branch}{RST}{DIM}){RST} {git_st}'
 
     # Context bar with real percentage
-    out += f'{sep}{DIM}Ctx{RST} {bar(used_pct, 100, 8, ctx_color)} {ctx_color}{used_pct}%{RST} {DIM}{tokens // 1000}k/{ctx_size // 1000}k{RST}'
+    out += f'{sep}{DIM}Ctx{RST} {bar(used_pct, 100, 8, ctx_color)} {ctx_color}{used_pct}%{RST} {DIM}{tokens_display // 1000}k/{ctx_size // 1000}k{RST}'
 
     c5 = lim_color(h5)
     c7 = lim_color(d7)

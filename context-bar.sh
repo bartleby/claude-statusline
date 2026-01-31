@@ -111,13 +111,15 @@ out+="${sep}${C_DIR}${dir}${RST}"
 
 # Context bar (from Claude Code's actual data)
 ctx_used_pct=$((100 - ctx_remaining_pct))
+# Derive tokens from API percentage (input+output tokens undercount due to system prompts, cache, etc.)
+ctx_used_display=$((ctx_total * ctx_used_pct / 100))
 
 # Choose color based on usage
 ctx_color="$C_BAR"
 [[ $ctx_used_pct -ge 90 ]] && ctx_color="$C_HIGH" || { [[ $ctx_used_pct -ge 70 ]] && ctx_color="$C_WARN"; }
 
 # Context usage bar
-out+="${sep}${DIM}Ctx${RST} $(bar $ctx_used_pct 100 8 $ctx_color) ${ctx_color}${ctx_used_pct}%${RST} ${DIM}$((ctx_used/1000))k/$((ctx_total/1000))k${RST}"
+out+="${sep}${DIM}Ctx${RST} $(bar $ctx_used_pct 100 8 $ctx_color) ${ctx_color}${ctx_used_pct}%${RST} ${DIM}$((ctx_used_display/1000))k/$((ctx_total/1000))k${RST}"
 
 c5=$(lim_color "$h5"); c7=$(lim_color "$d7")
 out+="${sep}${DIM}5h${RST} $(bar ${h5:-0} 100 8 $c5) ${c5}${h5}%${RST} ${DIM}($(time_until "$h5_r"))${RST}"
