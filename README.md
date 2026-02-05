@@ -49,7 +49,7 @@ Add to `~/.claude/settings.json`:
 }
 ```
 
-### 3. (Optional) Enable /skin command
+### 3. Enable /skin command
 
 Create hook file `~/.claude/hooks/skin-hook.sh`:
 
