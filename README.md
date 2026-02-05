@@ -125,6 +125,50 @@ Add hook to `~/.claude/settings.json`:
 
 Press `Shift+Tab` to refresh statusline after changing skin.
 
+## Usage
+
+### Reading the statusline
+
+The statusline displays three rows of information:
+
+```
+▏ ▐▛███▜▌ ▕ Opus4.5 │ my-project (main) ✓ │ +12/-3
+▏▝▜█████▛▘▕ ctx ▓▓░░░░░░ 28% 49k/200k │ usd $0.42 │ ttm 1:23
+▏  ▘▘ ▝▝  ▕ 5hr ▓░░░░░░░ 12% (4:11) │ wkl ▓▓░░░░░░ 24% (3d)
+```
+
+**Row 1** — Model, directory, git branch, changes count, lines added/removed
+**Row 2** — Context usage, session cost in USD, session time
+**Row 3** — 5-hour rate limit with reset time, weekly rate limit with reset time
+
+### Status indicators
+
+| Indicator | Meaning |
+|-----------|---------|
+| `✓` | No uncommitted changes |
+| `3` | 3 uncommitted changes |
+| `+12/-3` | 12 lines added, 3 removed this session |
+| `49k/200k` | 49k tokens used of 200k context window |
+| `(4:11)` | Resets in 4 hours 11 minutes |
+| `(3d)` | Resets in 3 days |
+
+### Color warnings
+
+Progress bars change color based on usage:
+- **Normal color** — under 70%, plenty of capacity
+- **Yellow/Warning** — 70-89%, approaching limit
+- **Red/Critical** — 90%+, limit almost reached
+
+### Changing themes
+
+```bash
+/skin              # Show all 18 themes in gallery
+/skin kratos       # Apply kratos theme
+/skin spiderman    # Apply spiderman theme
+```
+
+After applying a theme, press `Shift+Tab` to refresh the statusline.
+
 ## Requirements
 
 - **macOS** (uses `security` for Keychain access)
