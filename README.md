@@ -25,7 +25,7 @@ Compact, colorful status line for [Claude Code](https://claude.ai/code) CLI with
 curl -fsSL https://raw.githubusercontent.com/bartleby/claude-statusline/main/install.sh | bash
 ```
 
-### Windows
+### Windows (PowerShell)
 
 ```powershell
 irm https://raw.githubusercontent.com/bartleby/claude-statusline/main/windows/install.ps1 | iex
@@ -115,7 +115,7 @@ After applying a theme, press `Shift+Tab` to refresh the statusline.
 curl -fsSL https://raw.githubusercontent.com/bartleby/claude-statusline/main/uninstall.sh | bash
 ```
 
-### Windows
+### Windows (PowerShell)
 
 ```powershell
 irm https://raw.githubusercontent.com/bartleby/claude-statusline/main/windows/uninstall.ps1 | iex
