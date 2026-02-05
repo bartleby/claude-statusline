@@ -19,7 +19,7 @@ Compact, colorful status line for [Claude Code](https://claude.ai/code) CLI with
 curl -fsSL https://raw.githubusercontent.com/bartleby/claude-statusline/main/install.sh | bash
 ```
 
-Restart Claude Code and you're done!
+Press `Shift+Tab` to see the statusline!
 
 ## Manual Installation (macOS)
 
