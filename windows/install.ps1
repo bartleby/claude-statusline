@@ -44,16 +44,17 @@ foreach ($script in $scripts) {
 Write-Host "Scripts installed to $ScriptsDir" -ForegroundColor Green
 
 # Create skill definition for /skin command visibility in menu
-$skillContent = @'
----
-name: skin
-description: Apply a skin/theme to Claude Code statusline
-command: python ~/.claude/scripts/claude-skin.py
-user-invocable: true
----
-
-Apply a skin theme. Run without arguments to see gallery, or with skin name to apply.
-'@
+$skillLines = @(
+    "---",
+    "name: skin",
+    "description: Apply a skin/theme to Claude Code statusline",
+    "command: python ~/.claude/scripts/claude-skin.py",
+    "user-invocable: true",
+    "---",
+    "",
+    "Apply a skin theme. Run without arguments to see gallery, or with skin name to apply."
+)
+$skillContent = $skillLines -join "`n"
 
 $skillFile = Join-Path $SkillsDir "SKILL.md"
 Set-Content -Path $skillFile -Value $skillContent -Encoding UTF8
