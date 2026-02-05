@@ -48,9 +48,9 @@ $contextBarBat = Join-Path $ScriptsDir "context-bar.bat"
 $skinHookBat = Join-Path $ScriptsDir "skin-hook.bat"
 $claudeSkinBat = Join-Path $ScriptsDir "claude-skin.bat"
 
-Set-Content -Path $contextBarBat -Value "@echo off`npython `"%USERPROFILE%\.claude\scripts\context-bar.py`" %*" -Encoding ASCII
-Set-Content -Path $skinHookBat -Value "@echo off`npython `"%USERPROFILE%\.claude\scripts\skin-hook.py`" %*" -Encoding ASCII
-Set-Content -Path $claudeSkinBat -Value "@echo off`npython `"%USERPROFILE%\.claude\scripts\claude-skin.py`" %*" -Encoding ASCII
+Set-Content -Path $contextBarBat -Value "@echo off`nchcp 65001 >nul 2>&1`nset PYTHONIOENCODING=utf-8`npython `"%USERPROFILE%\.claude\scripts\context-bar.py`" %*" -Encoding ASCII
+Set-Content -Path $skinHookBat -Value "@echo off`nchcp 65001 >nul 2>&1`nset PYTHONIOENCODING=utf-8`npython `"%USERPROFILE%\.claude\scripts\skin-hook.py`" %*" -Encoding ASCII
+Set-Content -Path $claudeSkinBat -Value "@echo off`nchcp 65001 >nul 2>&1`nset PYTHONIOENCODING=utf-8`npython `"%USERPROFILE%\.claude\scripts\claude-skin.py`" %*" -Encoding ASCII
 
 Write-Host "Batch wrappers created" -ForegroundColor Green
 
