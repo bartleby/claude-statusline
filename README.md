@@ -2,105 +2,40 @@
 
 # Claude Code Statusline
 
-Compact, colorful status line for [Claude Code](https://claude.ai/code) CLI with **18 themes**, real-time **rate limits**, context usage, cost tracking and git info.
+Compact, colorful status line for [Claude Code](https://claude.ai/code) CLI with **21 themes**, real-time **rate limits**, context usage, cost tracking and git info.
+
+**Works on macOS, Linux, and Windows!**
 
 ![Preview](preview.png)
 
 ## Features
 
-- **18 Themes** — from Kratos to Spiderman, switch with `/skin` command
+- **21 Themes** — from Kratos to Spiderman, switch with `/skin` command
 - **Rate limits** — 5-hour and 7-day usage with progress bars + time until reset
 - **Context usage** — real-time token consumption with color-coded alerts
 - **Cost & Time** — session cost in USD and total time
 - **Git info** — branch name, uncommitted changes count
 - **Lines changed** — added/removed lines counter
 
-## Quick Install (macOS)
+## Install
+
+### macOS / Linux
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/bartleby/claude-statusline/main/install.sh | bash
 ```
 
+### Windows
+
+```powershell
+irm https://raw.githubusercontent.com/bartleby/claude-statusline/main/windows/install.ps1 | iex
+```
+
 Press `Shift+Tab` to see the statusline!
-
-## Manual Installation (macOS)
-
-### 1. Copy scripts
-
-```bash
-mkdir -p ~/.claude/scripts
-cp context-bar.sh ~/.claude/scripts/
-cp themes.sh ~/.claude/scripts/
-cp claude-skin.sh ~/.claude/scripts/
-cp update-usage-cache.sh ~/.claude/scripts/
-chmod +x ~/.claude/scripts/*.sh
-```
-
-### 2. Configure statusline
-
-Add to `~/.claude/settings.json`:
-
-```json
-{
-  "statusLine": {
-    "type": "command",
-    "command": "~/.claude/scripts/context-bar.sh"
-  }
-}
-```
-
-### 3. Enable /skin command
-
-Create hook file `~/.claude/hooks/skin-hook.sh`:
-
-```bash
-#!/bin/bash
-INPUT=$(cat)
-PROMPT=$(echo "$INPUT" | jq -r '.prompt // empty')
-
-if [[ "$PROMPT" =~ ^/skin ]]; then
-    ARG=$(echo "$PROMPT" | sed 's|^/skin[[:space:]]*||')
-    ~/.claude/scripts/claude-skin.sh $ARG >&2
-    exit 2
-fi
-exit 0
-```
-
-Make it executable:
-
-```bash
-chmod +x ~/.claude/hooks/skin-hook.sh
-```
-
-Add hook to `~/.claude/settings.json`:
-
-```json
-{
-  "statusLine": {
-    "type": "command",
-    "command": "~/.claude/scripts/context-bar.sh"
-  },
-  "hooks": {
-    "UserPromptSubmit": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/skin-hook.sh"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-### 4. Restart Claude Code
 
 ## Themes
 
-18 themes available. Use `/skin` to see gallery or `/skin <name>` to apply.
+21 themes available. Use `/skin` to see gallery or `/skin <name>` to apply.
 
 | Theme | Description |
 |-------|-------------|
@@ -122,6 +57,9 @@ Add hook to `~/.claude/settings.json`:
 | **inferno** | Intense red-orange fire |
 | **amethyst** | Deep purple crystal |
 | **bubblegum** | Bright pink |
+| **venom** | Black symbiote with white eyes |
+| **vaporwave** | Retro pink/cyan aesthetic |
+| **copper** | Bronze metallic |
 
 Press `Shift+Tab` to refresh statusline after changing skin.
 
@@ -162,7 +100,7 @@ Progress bars change color based on usage:
 ### Changing themes
 
 ```bash
-/skin              # Show all 18 themes in gallery
+/skin              # Show all 21 themes in gallery
 /skin kratos       # Apply kratos theme
 /skin spiderman    # Apply spiderman theme
 ```
@@ -171,33 +109,28 @@ After applying a theme, press `Shift+Tab` to refresh the statusline.
 
 ## Uninstall
 
+### macOS / Linux
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/bartleby/claude-statusline/main/uninstall.sh | bash
 ```
 
+### Windows
+
+```powershell
+irm https://raw.githubusercontent.com/bartleby/claude-statusline/main/windows/uninstall.ps1 | iex
+```
+
 ## Requirements
 
-- **macOS** (uses `security` for Keychain access)
+### macOS / Linux
 - `jq` — JSON processor (`brew install jq`)
 - `git` — for repository info
 
-## Windows
-
-> **Note**: Theme system and `/skin` command are not yet available on Windows. See [windows/](windows/) folder for basic Python version.
-
-## How it works
-
-### Rate limits
-Fetches usage data from Anthropic API using OAuth token from macOS Keychain. Data is cached and refreshed in background every 60 seconds.
-
-### Context bar
-Uses `used_percentage` from Claude Code API with color-coded warnings:
-- **Normal** (< 70%) — plenty of context
-- **Warning** (70-89%) — approaching limit
-- **Critical** (≥ 90%) — will auto-compact soon
-
-### Themes
-All themes defined in `themes.sh`. Each theme sets UI colors and logo appearance. Current theme stored in `~/.claude/current_skin`.
+### Windows
+- Python 3.8+ (from [python.org](https://python.org) or Microsoft Store)
+- `git` — for repository info
+- `keyring` package (optional, for rate limits): `pip install keyring`
 
 ## License
 

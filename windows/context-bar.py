@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Claude Code Status Line for Windows
-Format: Model | Dir (branch) n | Ctx ▓▓░░░░░░ 28% 49k/200k | 5h ▓░░░░░░░ 2% (4:11) | 7d ▓▓░░░░░░ 24% (3d)
+Claude Code Status Line for Windows (with theme support)
+3-line format with logo, matching bash version functionality
 """
 
 import sys
@@ -12,27 +12,55 @@ from pathlib import Path
 from datetime import datetime, timezone
 
 # Windows-specific: CREATE_NO_WINDOW flag for subprocess
-# This prevents console windows from flashing when running background scripts
 if os.name == 'nt':
     CREATE_NO_WINDOW = subprocess.CREATE_NO_WINDOW
 else:
     CREATE_NO_WINDOW = 0
 
-# ANSI Colors
+# Base ANSI codes
 RST = '\033[0m'
 BLD = '\033[1m'
 DIM = '\033[2m'
-C_MODEL = '\033[38;5;141m'
-C_DIR = '\033[38;5;75m'
-C_BRANCH = '\033[38;5;114m'
-C_DIRTY = '\033[38;5;208m'
-C_BAR = '\033[38;5;75m'
-C_BAR_E = '\033[38;5;238m'
-C_TXT = '\033[38;5;252m'
-C_SEP = '\033[38;5;240m'
-C_OK = '\033[38;5;114m'
-C_WARN = '\033[38;5;220m'
-C_HIGH = '\033[38;5;208m'
+
+# Wall characters for logo border
+C_WALL = '\033[38;5;237m'
+
+
+def load_theme() -> dict:
+    """Load current theme from config file."""
+    config_path = Path.home() / '.claude' / 'current_skin'
+    theme_name = 'kratos'
+
+    if config_path.exists():
+        try:
+            theme_name = config_path.read_text().strip().lower()
+        except Exception:
+            pass
+
+    # Try to import themes module
+    try:
+        script_dir = Path(__file__).parent
+        sys.path.insert(0, str(script_dir))
+        from themes import get_theme
+        return get_theme(theme_name)
+    except ImportError:
+        # Fallback: kratos theme hardcoded
+        return {
+            'C_MODEL': '\033[38;5;196m',
+            'C_DIR': '\033[38;5;223m',
+            'C_BRANCH': '\033[38;5;180m',
+            'C_DIRTY': '\033[38;5;160m',
+            'C_BAR': '\033[38;5;180m',
+            'C_BAR_E': '\033[38;5;52m',
+            'C_TXT': '\033[38;5;252m',
+            'C_SEP': '\033[38;5;137m',
+            'C_OK': '\033[38;5;223m',
+            'C_WARN': '\033[38;5;180m',
+            'C_HIGH': '\033[38;5;196m',
+            'logo1': f" \033[38;5;180m▐\033[38;5;223m▛\033[38;5;230m█\033[38;5;230m█\033[38;5;223m█\033[38;5;196m▜\033[38;5;180m▌{RST} ",
+            'logo2': f"\033[38;5;180m▝\033[38;5;223m▜\033[38;5;230m█\033[38;5;230m█\033[38;5;223m█\033[38;5;223m█\033[38;5;223m█\033[38;5;196m▛\033[38;5;180m▘{RST}",
+            'logo3': f"  \033[38;5;223m▘▘ \033[38;5;223m▝▝{RST}  ",
+        }
 
 
 def get_short_model(model_id: str) -> str:
@@ -53,67 +81,66 @@ def get_short_model(model_id: str) -> str:
     return '?'
 
 
-def get_git_info(cwd: str) -> tuple[str, str]:
+def get_git_info(cwd: str, theme: dict) -> tuple[str, str]:
     """Return (branch, status_indicator)."""
     if not cwd or not os.path.isdir(cwd):
         return '', ''
     try:
+        # Use creationflags on Windows to hide console window
+        kwargs = {'capture_output': True, 'text': True, 'timeout': 2}
+        if os.name == 'nt':
+            kwargs['creationflags'] = CREATE_NO_WINDOW
+
         branch = subprocess.run(
             ['git', '-C', cwd, 'branch', '--show-current'],
-            capture_output=True, text=True, timeout=2
+            **kwargs
         ).stdout.strip()
+
         if not branch:
             return '', ''
 
         changes = subprocess.run(
             ['git', '-C', cwd, '--no-optional-locks', 'status', '--porcelain'],
-            capture_output=True, text=True, timeout=2
+            **kwargs
         ).stdout.strip()
 
         change_count = len(changes.splitlines()) if changes else 0
         if change_count > 0:
-            return branch, f'{C_DIRTY}{change_count}{RST}'
-        return branch, f'{C_OK}✓{RST}'
+            return branch, f"{theme['C_DIRTY']}{change_count}{RST}"
+        return branch, f"{theme['C_OK']}✓{RST}"
     except Exception:
         return '', ''
 
 
 def get_context_info(data: dict) -> tuple[int, int, int]:
-    """Extract context info from Claude Code JSON.
-    Returns: (tokens_used, context_size, remaining_percentage)
-    """
+    """Extract context info from Claude Code JSON."""
     context_window = data.get('context_window', {})
 
-    total_input = context_window.get('total_input_tokens', 0)
-    total_output = context_window.get('total_output_tokens', 0)
-    tokens_used = total_input + total_output
-
     ctx_size = context_window.get('context_window_size', 200000)
-    remaining_pct = context_window.get('remaining_percentage', 0)
+    used_pct = context_window.get('used_percentage', 0)
 
-    # If no tokens used, context is empty (0% used), not full (100% used)
-    if tokens_used == 0:
-        remaining_pct = 100
+    if used_pct is None or used_pct == 'null':
+        used_pct = 0
 
-    return tokens_used, ctx_size, remaining_pct
+    return int(used_pct), int(ctx_size)
 
 
-def bar(val: int, max_val: int, length: int, color: str) -> str:
+def bar(val: int, max_val: int, length: int, color: str, empty_color: str) -> str:
     """Build a progress bar."""
     if max_val <= 0:
-        return f'{C_BAR_E}{"░" * length}{RST}'
+        return f'{empty_color}{"░" * length}{RST}'
     filled = min(val * length // max_val, length)
     if val > 0 and filled == 0:
         filled = 1
     return ''.join(
-        f'{color}▓{RST}' if i < filled else f'{C_BAR_E}░{RST}'
+        f'{color}▓{RST}' if i < filled else f'{empty_color}░{RST}'
         for i in range(length)
     )
 
 
 def time_until(iso_time: str) -> str:
     """Calculate time remaining until reset."""
-    if not iso_time:
+    if not iso_time or iso_time == 'null':
         return '?'
     try:
         # Parse ISO format: 2024-01-15T10:30:00.000Z
@@ -132,17 +159,17 @@ def time_until(iso_time: str) -> str:
         return '?'
 
 
-def lim_color(pct: str) -> str:
+def lim_color(pct: str, theme: dict) -> str:
     """Get color based on percentage."""
     if pct == '?':
         return DIM
     try:
         val = int(pct)
         if val < 50:
-            return C_OK
+            return theme['C_OK']
         if val < 80:
-            return C_WARN
-        return C_HIGH
+            return theme['C_WARN']
+        return theme['C_HIGH']
     except ValueError:
         return DIM
 
@@ -167,27 +194,32 @@ def get_usage_cache() -> tuple[str, str, str, str]:
 
             # Refresh cache in background if older than 60 seconds
             if age > 60 and script_path.exists():
-                subprocess.Popen(
-                    [sys.executable, str(script_path)],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    creationflags=CREATE_NO_WINDOW
-                )
+                kwargs = {
+                    'stdout': subprocess.DEVNULL,
+                    'stderr': subprocess.DEVNULL,
+                }
+                if os.name == 'nt':
+                    kwargs['creationflags'] = CREATE_NO_WINDOW
+                subprocess.Popen([sys.executable, str(script_path)], **kwargs)
         except Exception:
             pass
     elif script_path.exists():
         # No cache, trigger update
-        subprocess.Popen(
-            [sys.executable, str(script_path)],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            creationflags=CREATE_NO_WINDOW
-        )
+        kwargs = {
+            'stdout': subprocess.DEVNULL,
+            'stderr': subprocess.DEVNULL,
+        }
+        if os.name == 'nt':
+            kwargs['creationflags'] = CREATE_NO_WINDOW
+        subprocess.Popen([sys.executable, str(script_path)], **kwargs)
 
     return h5, d7, h5_r, d7_r
 
 
 def main():
+    # Load theme
+    theme = load_theme()
+
     # Read input JSON from stdin
     try:
         data = json.loads(sys.stdin.read())
@@ -207,45 +239,79 @@ def main():
     dir_name = os.path.basename(cwd) if cwd else '?'
 
     # Git info
-    branch, git_st = get_git_info(cwd)
+    branch, git_st = get_git_info(cwd, theme)
 
     # Context info from Claude Code API
-    tokens, ctx_size, remaining_pct = get_context_info(data)
-    used_pct = 100 - remaining_pct
-    # Derive tokens from API percentage (input+output tokens undercount due to system prompts, cache, etc.)
-    tokens_display = ctx_size * used_pct // 100
+    ctx_used_pct, ctx_size = get_context_info(data)
+    ctx_used_display = ctx_size * ctx_used_pct // 100
+
+    # Cost and duration
+    cost_data = data.get('cost', {})
+    cost_usd = cost_data.get('total_cost_usd', 0) or 0
+    duration_ms = cost_data.get('total_duration_ms', 0) or 0
+    lines_added = cost_data.get('total_lines_added', 0) or 0
+    lines_removed = cost_data.get('total_lines_removed', 0) or 0
+
+    # Format cost
+    cost_fmt = f'{float(cost_usd):.2f}'
+
+    # Format duration (HH:MM)
+    duration_s = int(duration_ms) // 1000
+    duration_h = duration_s // 3600
+    duration_m = (duration_s % 3600) // 60
+    duration_fmt = f'{duration_h}:{duration_m:02d}'
 
     # Determine color based on usage
-    ctx_color = C_BAR
-    if used_pct >= 90:
-        ctx_color = C_HIGH
-    elif used_pct >= 70:
-        ctx_color = C_WARN
+    ctx_color = theme['C_BAR']
+    if ctx_used_pct >= 90:
+        ctx_color = theme['C_HIGH']
+    elif ctx_used_pct >= 70:
+        ctx_color = theme['C_WARN']
 
     # Usage limits
     h5, d7, h5_r, d7_r = get_usage_cache()
-
-    # Build output
-    sep = f' {C_SEP}│{RST} '
-
-    out = f'{C_MODEL}{BLD}{model}{RST}'
-    out += f'{sep}{C_DIR}{dir_name}{RST}'
-
-    if branch:
-        out += f' {DIM}({RST}{C_BRANCH}{branch}{RST}{DIM}){RST} {git_st}'
-
-    # Context bar with real percentage
-    out += f'{sep}{DIM}Ctx{RST} {bar(used_pct, 100, 8, ctx_color)} {ctx_color}{used_pct}%{RST} {DIM}{tokens_display // 1000}k/{ctx_size // 1000}k{RST}'
-
-    c5 = lim_color(h5)
-    c7 = lim_color(d7)
+    c5 = lim_color(h5, theme)
+    c7 = lim_color(d7, theme)
     h5_val = int(h5) if h5 != '?' else 0
     d7_val = int(d7) if d7 != '?' else 0
 
-    out += f'{sep}{DIM}5h{RST} {bar(h5_val, 100, 8, c5)} {c5}{h5}%{RST} {DIM}({time_until(h5_r)}){RST}'
-    out += f'{sep}{DIM}7d{RST} {bar(d7_val, 100, 8, c7)} {c7}{d7}%{RST} {DIM}({time_until(d7_r)}){RST}'
+    # Build output
+    sep = f" {theme['C_SEP']}│{RST} "
 
-    print(out)
+    # Logo walls
+    wl = f"{C_WALL}▏{RST}"
+    wr = f"{C_WALL}▕{RST}"
+
+    # Wrap logo with walls
+    logo1_full = f"{wl}{theme['logo1']}{wr}"
+    logo2_full = f"{wl}{theme['logo2']}{wr}"
+    logo3_full = f"{wl}{theme['logo3']}{wr}"
+
+    # Line 1: Model, Dir, Branch, Lines changed
+    data1 = f"{theme['C_MODEL']}{BLD}{model}{RST}{sep}{theme['C_DIR']}{dir_name}{RST}"
+    if branch:
+        data1 += f" {DIM}({RST}{theme['C_BRANCH']}{branch}{RST}{DIM}){RST} {git_st}"
+    if lines_added > 0 or lines_removed > 0:
+        data1 += f"{sep}{theme['C_OK']}+{lines_added}{RST}{DIM}/{RST}{theme['C_WARN']}-{lines_removed}{RST}"
+
+    # Line 2: Context, Cost, Duration
+    ctx_bar = bar(ctx_used_pct, 100, 8, ctx_color, theme['C_BAR_E'])
+    data2 = f"{DIM}ctx{RST} {ctx_bar} {ctx_color}{ctx_used_pct}%{RST} {DIM}{ctx_used_display//1000}k/{ctx_size//1000}k{RST}"
+    data2 += f"{sep}{DIM}usd{RST} {theme['C_OK']}${cost_fmt}{RST}"
+    data2 += f"{sep}{DIM}ttm{RST} {theme['C_OK']}{duration_fmt}{RST}"
+
+    # Line 3: Rate limits (5hr and weekly)
+    bar5 = bar(h5_val, 100, 8, c5, theme['C_BAR_E'])
+    bar7 = bar(d7_val, 100, 8, c7, theme['C_BAR_E'])
+    data3 = f"{DIM}5hr{RST} {bar5} {c5}{h5}%{RST} {DIM}({time_until(h5_r)}){RST}"
+    data3 += f"{sep}{DIM}wkl{RST} {bar7} {c7}{d7}%{RST} {DIM}({time_until(d7_r)}){RST}"
+
+    # Output 3 lines with logo
+    print()
+    print(f"{logo1_full} {data1}")
+    print(f"{logo2_full} {data2}")
+    print(f"{logo3_full} {data3}")
+    print()
 
 
 if __name__ == '__main__':

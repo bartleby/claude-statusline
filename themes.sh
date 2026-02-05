@@ -425,7 +425,7 @@ theme_venom() {
 }
 
 # List of available themes
-THEMES="kratos shadow ocean goose matrix sakura aurora ember frost odi cyberpunk lavender gold inferno amethyst bubblegum spiderman captain"
+THEMES="kratos shadow ocean goose matrix sakura aurora ember frost odi cyberpunk lavender gold inferno copper amethyst bubblegum spiderman captain venom vaporwave"
 
 # Load theme by name
 load_theme() {
@@ -449,6 +449,9 @@ load_theme() {
         bubblegum) theme_bubblegum ;;
         spiderman) theme_spiderman ;;
         captain)   theme_captain ;;
+        venom)     theme_venom ;;
+        vaporwave) theme_vaporwave ;;
+        copper)    theme_copper ;;
         *)         theme_kratos ;;
     esac
 }
