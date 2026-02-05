@@ -167,6 +167,12 @@ Progress bars change color based on usage:
 
 After applying a theme, press `Shift+Tab` to refresh the statusline.
 
+## Uninstall
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/bartleby/claude-statusline/main/uninstall.sh | bash
+```
+
 ## Requirements
 
 - **macOS** (uses `security` for Keychain access)
