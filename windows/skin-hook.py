@@ -6,20 +6,15 @@ Used by Claude Code hooks system on Windows
 
 import sys
 import os
-
-# Fix Windows console encoding
-if os.name == 'nt':
-    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
-
 import json
-import subprocess
 from pathlib import Path
 
 # Windows-specific: CREATE_NO_WINDOW flag for subprocess
 if os.name == 'nt':
+    import subprocess
     CREATE_NO_WINDOW = subprocess.CREATE_NO_WINDOW
 else:
+    import subprocess
     CREATE_NO_WINDOW = 0
 
 
@@ -51,7 +46,7 @@ def main():
         print(f"Error: Skin script not found at {skin_script}", file=sys.stderr)
         sys.exit(2)
 
-    # Run the skin script and redirect output to stderr (Claude Code shows stderr)
+    # Run the skin script - don't capture output, let it go directly to stderr
     try:
         cmd = [sys.executable, str(skin_script)]
         if arg:
@@ -60,21 +55,15 @@ def main():
         env = os.environ.copy()
         env['PYTHONIOENCODING'] = 'utf-8'
 
-        result = subprocess.run(
+        # Run without capturing - output goes directly to console/stderr
+        subprocess.run(
             cmd,
-            capture_output=True,
-            text=True,
+            stdin=subprocess.DEVNULL,
+            stdout=sys.stderr,  # Redirect stdout to stderr
+            stderr=sys.stderr,
             timeout=5,
-            encoding='utf-8',
-            errors='replace',
             env=env
         )
-
-        # Output to stderr so Claude Code displays it
-        if result.stdout:
-            print(result.stdout, file=sys.stderr, end='')
-        if result.stderr:
-            print(result.stderr, file=sys.stderr, end='')
 
     except subprocess.TimeoutExpired:
         print("Error: Skin script timed out", file=sys.stderr)
