@@ -56,6 +56,21 @@ EOF
 chmod +x "${HOOKS_DIR}/skin-hook.sh"
 echo "✓ Hook installed to ${HOOKS_DIR}"
 
+# Install skill for /skin command visibility in menu
+SKILLS_DIR="${CLAUDE_DIR}/skills/skin"
+mkdir -p "$SKILLS_DIR"
+cat > "${SKILLS_DIR}/SKILL.md" << 'EOF'
+---
+name: skin
+description: Apply a skin/theme to Claude Code statusline
+command: ~/.claude/scripts/claude-skin.sh
+user-invocable: true
+---
+
+Apply a skin theme. Run without arguments to see gallery, or with skin name to apply.
+EOF
+echo "✓ Skill installed to ${SKILLS_DIR}"
+
 # Update settings.json
 SETTINGS_FILE="${CLAUDE_DIR}/settings.json"
 
