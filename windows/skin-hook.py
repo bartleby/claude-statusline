@@ -5,9 +5,15 @@ Used by Claude Code hooks system on Windows
 """
 
 import sys
+import os
+
+# Fix Windows console encoding
+if os.name == 'nt':
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
 import json
 import subprocess
-import os
 from pathlib import Path
 
 # Windows-specific: CREATE_NO_WINDOW flag for subprocess
@@ -51,11 +57,17 @@ def main():
         if arg:
             cmd.append(arg)
 
+        env = os.environ.copy()
+        env['PYTHONIOENCODING'] = 'utf-8'
+
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
-            timeout=5
+            timeout=5,
+            encoding='utf-8',
+            errors='replace',
+            env=env
         )
 
         # Output to stderr so Claude Code displays it

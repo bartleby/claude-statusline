@@ -6,6 +6,13 @@ Usage: claude-skin.py          - show gallery
 """
 
 import sys
+import os
+
+# Fix Windows console encoding
+if os.name == 'nt':
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
 from pathlib import Path
 
 # Add script directory to path for themes import

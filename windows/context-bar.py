@@ -5,8 +5,14 @@ Claude Code Status Line for Windows (with theme support)
 """
 
 import sys
-import json
 import os
+
+# Fix Windows console encoding
+if os.name == 'nt':
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
+import json
 import subprocess
 from pathlib import Path
 from datetime import datetime, timezone
