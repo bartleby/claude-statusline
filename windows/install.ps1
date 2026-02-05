@@ -43,12 +43,23 @@ foreach ($script in $scripts) {
 
 Write-Host "Scripts installed to $ScriptsDir" -ForegroundColor Green
 
+# Create batch wrapper scripts (Windows doesn't expand ~ in commands)
+$contextBarBat = Join-Path $ScriptsDir "context-bar.bat"
+$skinHookBat = Join-Path $ScriptsDir "skin-hook.bat"
+$claudeSkinBat = Join-Path $ScriptsDir "claude-skin.bat"
+
+Set-Content -Path $contextBarBat -Value "@echo off`npython `"%USERPROFILE%\.claude\scripts\context-bar.py`" %*" -Encoding ASCII
+Set-Content -Path $skinHookBat -Value "@echo off`npython `"%USERPROFILE%\.claude\scripts\skin-hook.py`" %*" -Encoding ASCII
+Set-Content -Path $claudeSkinBat -Value "@echo off`npython `"%USERPROFILE%\.claude\scripts\claude-skin.py`" %*" -Encoding ASCII
+
+Write-Host "Batch wrappers created" -ForegroundColor Green
+
 # Create skill definition for /skin command visibility in menu
 $skillLines = @(
     "---",
     "name: skin",
     "description: Apply a skin/theme to Claude Code statusline",
-    "command: python ~/.claude/scripts/claude-skin.py",
+    "command: %USERPROFILE%\.claude\scripts\claude-skin.bat",
     "user-invocable: true",
     "---",
     "",
@@ -66,7 +77,7 @@ $settingsFile = Join-Path $ClaudeDir "settings.json"
 $newSettings = @{
     statusLine = @{
         type = "command"
-        command = "python ~/.claude/scripts/context-bar.py"
+        command = "%USERPROFILE%\.claude\scripts\context-bar.bat"
     }
     hooks = @{
         UserPromptSubmit = @(
@@ -75,7 +86,7 @@ $newSettings = @{
                 hooks = @(
                     @{
                         type = "command"
-                        command = "python ~/.claude/scripts/skin-hook.py"
+                        command = "%USERPROFILE%\.claude\scripts\skin-hook.bat"
                     }
                 )
             }
