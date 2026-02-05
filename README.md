@@ -1,3 +1,5 @@
+![Header](header.png)
+
 # Claude Code Statusline
 
 Compact, colorful status line for [Claude Code](https://claude.ai/code) CLI with **18 themes**, real-time **rate limits**, context usage, cost tracking and git info.
