@@ -75,12 +75,29 @@ echo "✓ Skill installed to ${SKILLS_DIR}"
 SETTINGS_FILE="${CLAUDE_DIR}/settings.json"
 
 if [[ -f "$SETTINGS_FILE" ]]; then
-    # Check if already configured
-    if grep -q "context-bar.sh" "$SETTINGS_FILE" 2>/dev/null; then
-        echo "✓ Settings already configured"
+    # Use jq to merge settings if available
+    if command -v jq &> /dev/null; then
+        # Create temp file with new settings
+        TMP_SETTINGS=$(mktemp)
+
+        # Add statusLine if not present
+        if ! grep -q "context-bar.sh" "$SETTINGS_FILE" 2>/dev/null; then
+            jq '.statusLine = {"type": "command", "command": "~/.claude/scripts/context-bar.sh"}' "$SETTINGS_FILE" > "$TMP_SETTINGS" && mv "$TMP_SETTINGS" "$SETTINGS_FILE"
+            echo "✓ StatusLine added to settings"
+        else
+            echo "✓ StatusLine already configured"
+        fi
+
+        # Add hook if not present
+        if ! grep -q "skin-hook.sh" "$SETTINGS_FILE" 2>/dev/null; then
+            jq '.hooks.UserPromptSubmit = (.hooks.UserPromptSubmit // []) + [{"matcher": "", "hooks": [{"type": "command", "command": "~/.claude/hooks/skin-hook.sh"}]}]' "$SETTINGS_FILE" > "$TMP_SETTINGS" && mv "$TMP_SETTINGS" "$SETTINGS_FILE"
+            echo "✓ Hook added to settings"
+        else
+            echo "✓ Hook already configured"
+        fi
     else
         echo ""
-        echo "NOTE: Add this to your ${SETTINGS_FILE}:"
+        echo "NOTE: jq not found. Please add hooks manually to ${SETTINGS_FILE}:"
         echo ""
         cat << 'SETTINGS'
 {
