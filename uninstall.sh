@@ -26,6 +26,10 @@ rm -f "${CLAUDE_DIR}/current_skin"
 rm -f "${CLAUDE_DIR}/usage_cache"
 echo "✓ Config removed"
 
+# Remove skill
+rm -rf "${CLAUDE_DIR}/skills/skin"
+echo "✓ Skill removed"
+
 echo ""
 echo "NOTE: You may need to manually remove statusLine and hooks from:"
 echo "  ${CLAUDE_DIR}/settings.json"
