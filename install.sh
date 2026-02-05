@@ -4,11 +4,10 @@
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_URL="https://raw.githubusercontent.com/bartleby/claude-statusline/main"
 CLAUDE_DIR="${HOME}/.claude"
 SCRIPTS_DIR="${CLAUDE_DIR}/scripts"
 HOOKS_DIR="${CLAUDE_DIR}/hooks"
-SKILLS_DIR="${CLAUDE_DIR}/skills/skin"
 
 echo ""
 echo "Installing Claude Statusline..."
@@ -17,16 +16,17 @@ echo ""
 # Create directories
 mkdir -p "$SCRIPTS_DIR"
 mkdir -p "$HOOKS_DIR"
-mkdir -p "$SKILLS_DIR"
 
-# Copy scripts
-cp "${SCRIPT_DIR}/context-bar.sh" "$SCRIPTS_DIR/"
-cp "${SCRIPT_DIR}/themes.sh" "$SCRIPTS_DIR/"
-cp "${SCRIPT_DIR}/claude-skin.sh" "$SCRIPTS_DIR/"
+# Download scripts
+curl -fsSL "${REPO_URL}/context-bar.sh" -o "${SCRIPTS_DIR}/context-bar.sh"
+curl -fsSL "${REPO_URL}/themes.sh" -o "${SCRIPTS_DIR}/themes.sh"
+curl -fsSL "${REPO_URL}/claude-skin.sh" -o "${SCRIPTS_DIR}/claude-skin.sh"
+curl -fsSL "${REPO_URL}/update-usage-cache.sh" -o "${SCRIPTS_DIR}/update-usage-cache.sh"
 
 # Make executable
 chmod +x "${SCRIPTS_DIR}/context-bar.sh"
 chmod +x "${SCRIPTS_DIR}/claude-skin.sh"
+chmod +x "${SCRIPTS_DIR}/update-usage-cache.sh"
 
 echo "✓ Scripts installed to ${SCRIPTS_DIR}"
 
@@ -56,50 +56,48 @@ EOF
 chmod +x "${HOOKS_DIR}/skin-hook.sh"
 echo "✓ Hook installed to ${HOOKS_DIR}"
 
-# Install skill
-cat > "${SKILLS_DIR}/SKILL.md" << 'EOF'
----
-name: skin
-description: Apply a skin/theme to Claude Code statusline
-command: ~/.claude/scripts/claude-skin.sh
-user-invocable: true
----
-
-Apply a skin theme. Run without arguments to see gallery, or with skin name to apply.
-EOF
-
-echo "✓ Skill installed to ${SKILLS_DIR}"
-
 # Update settings.json
 SETTINGS_FILE="${CLAUDE_DIR}/settings.json"
 
 if [[ -f "$SETTINGS_FILE" ]]; then
-    # Check if hooks already configured
-    if grep -q "skin-hook.sh" "$SETTINGS_FILE" 2>/dev/null; then
+    # Check if already configured
+    if grep -q "context-bar.sh" "$SETTINGS_FILE" 2>/dev/null; then
         echo "✓ Settings already configured"
     else
         echo ""
-        echo "NOTE: Add this to your ${SETTINGS_FILE} manually:"
+        echo "NOTE: Add this to your ${SETTINGS_FILE}:"
         echo ""
-        echo '  "hooks": {'
-        echo '    "UserPromptSubmit": ['
-        echo '      {'
-        echo '        "matcher": "",'
-        echo '        "hooks": ['
-        echo '          {'
-        echo '            "type": "command",'
-        echo '            "command": "~/.claude/hooks/skin-hook.sh"'
-        echo '          }'
-        echo '        ]'
-        echo '      }'
-        echo '    ]'
-        echo '  }'
+        cat << 'SETTINGS'
+{
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/scripts/context-bar.sh"
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/skin-hook.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+SETTINGS
         echo ""
     fi
 else
-    # Create settings with hooks
+    # Create settings
     cat > "$SETTINGS_FILE" << 'EOF'
 {
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/scripts/context-bar.sh"
+  },
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -131,5 +129,5 @@ echo "Usage:"
 echo "  /skin          - show available skins"
 echo "  /skin <name>   - apply a skin"
 echo ""
-echo "Press Shift+Tab to refresh statusline after applying a skin."
+echo "Restart Claude Code and press Shift+Tab to see statusline."
 echo ""

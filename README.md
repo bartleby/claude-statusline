@@ -16,9 +16,7 @@ Compact, colorful status line for [Claude Code](https://claude.ai/code) CLI with
 ## Quick Install (macOS)
 
 ```bash
-git clone https://github.com/bartleby/claude-statusline.git
-cd claude-statusline
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/bartleby/claude-statusline/main/install.sh | bash
 ```
 
 Restart Claude Code and you're done!
