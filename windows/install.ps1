@@ -97,50 +97,50 @@ $newSettings = @{
 if (Test-Path $settingsFile) {
     try {
         $existingSettings = Get-Content $settingsFile -Raw | ConvertFrom-Json -AsHashtable
+        $changed = $false
 
-        # Check if already configured
-        $alreadyConfigured = $false
-        if ($existingSettings.statusLine -and $existingSettings.statusLine.command) {
-            if ($existingSettings.statusLine.command -like "*context-bar*") {
-                $alreadyConfigured = $true
-            }
-        }
-
-        if ($alreadyConfigured) {
-            Write-Host "Settings already configured" -ForegroundColor Green
+        # Add statusLine if not present
+        if ($existingSettings.statusLine -and $existingSettings.statusLine.command -like "*context-bar*") {
+            Write-Host "StatusLine already configured" -ForegroundColor Green
         }
         else {
-            # Merge settings
             $existingSettings.statusLine = $newSettings.statusLine
+            $changed = $true
+            Write-Host "StatusLine added to settings" -ForegroundColor Green
+        }
 
-            # Merge hooks
-            if (-not $existingSettings.hooks) {
-                $existingSettings.hooks = @{}
-            }
-            if (-not $existingSettings.hooks.UserPromptSubmit) {
-                $existingSettings.hooks.UserPromptSubmit = @()
-            }
+        # Add hook if not present (check separately from statusLine)
+        if (-not $existingSettings.hooks) {
+            $existingSettings.hooks = @{}
+        }
+        if (-not $existingSettings.hooks.UserPromptSubmit) {
+            $existingSettings.hooks.UserPromptSubmit = @()
+        }
 
-            # Check if hook already exists
-            $hookExists = $false
-            foreach ($hookGroup in $existingSettings.hooks.UserPromptSubmit) {
-                if ($hookGroup.hooks) {
-                    foreach ($hook in $hookGroup.hooks) {
-                        if ($hook.command -like "*skin-hook*") {
-                            $hookExists = $true
-                            break
-                        }
+        $hookExists = $false
+        foreach ($hookGroup in $existingSettings.hooks.UserPromptSubmit) {
+            if ($hookGroup.hooks) {
+                foreach ($hook in $hookGroup.hooks) {
+                    if ($hook.command -like "*skin-hook*") {
+                        $hookExists = $true
+                        break
                     }
                 }
-                if ($hookExists) { break }
             }
+            if ($hookExists) { break }
+        }
 
-            if (-not $hookExists) {
-                $existingSettings.hooks.UserPromptSubmit += $newSettings.hooks.UserPromptSubmit[0]
-            }
+        if ($hookExists) {
+            Write-Host "Hook already configured" -ForegroundColor Green
+        }
+        else {
+            $existingSettings.hooks.UserPromptSubmit += $newSettings.hooks.UserPromptSubmit[0]
+            $changed = $true
+            Write-Host "Hook added to settings" -ForegroundColor Green
+        }
 
+        if ($changed) {
             $existingSettings | ConvertTo-Json -Depth 10 | Set-Content $settingsFile -Encoding UTF8
-            Write-Host "Settings updated at $settingsFile" -ForegroundColor Green
         }
     }
     catch {
