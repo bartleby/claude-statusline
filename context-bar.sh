@@ -4,25 +4,43 @@
 
 export LC_ALL=C
 
-# Colors
+# Base colors
 RST='\033[0m'
 BLD='\033[1m'
 DIM='\033[2m'
-C_MODEL='\033[38;5;141m'
-C_DIR='\033[38;5;75m'
-C_BRANCH='\033[38;5;114m'
-C_DIRTY='\033[38;5;208m'
-C_BAR='\033[38;5;75m'
-C_BAR_E='\033[38;5;238m'
-C_TXT='\033[38;5;252m'
-C_SEP='\033[38;5;240m'
-C_OK='\033[38;5;114m'
-C_WARN='\033[38;5;220m'
-C_HIGH='\033[38;5;208m'
+
+# Load theme
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SKIN_CONFIG="${HOME}/.claude/current_skin"
+
+if [[ -f "${SCRIPT_DIR}/themes.sh" ]]; then
+    source "${SCRIPT_DIR}/themes.sh"
+    if [[ -f "$SKIN_CONFIG" ]]; then
+        load_theme "$(cat "$SKIN_CONFIG")"
+    else
+        load_theme "kratos"
+    fi
+else
+    # Fallback: Kratos theme hardcoded
+    C_MODEL='\033[38;5;196m'
+    C_DIR='\033[38;5;223m'
+    C_BRANCH='\033[38;5;180m'
+    C_DIRTY='\033[38;5;160m'
+    C_BAR='\033[38;5;180m'
+    C_BAR_E='\033[38;5;52m'
+    C_TXT='\033[38;5;252m'
+    C_SEP='\033[38;5;137m'
+    C_OK='\033[38;5;223m'
+    C_WARN='\033[38;5;180m'
+    C_HIGH='\033[38;5;196m'
+    logo1=" \033[38;5;180m▐\033[38;5;196m▛\033[38;5;223m█\033[38;5;230m█\033[38;5;223m█\033[38;5;223m▜\033[38;5;180m▌${RST} "
+    logo2="\033[38;5;180m▝\033[38;5;160m▜\033[38;5;223m█\033[38;5;230m█\033[38;5;223m█\033[38;5;230m█\033[38;5;223m█\033[38;5;223m▛\033[38;5;180m▘${RST}"
+    logo3="  \033[38;5;223m▘▘ ▝▝${RST}  "
+fi
 
 # Parse input JSON once
 input=$(cat)
-read -r model_id cwd ctx_used ctx_total ctx_remaining_pct <<< "$(echo "$input" | jq -r '[.model.id // .model.display_name // "?", .cwd // "", (.context_window.total_input_tokens // 0) + (.context_window.total_output_tokens // 0), .context_window.context_window_size // 0, .context_window.remaining_percentage // 0] | @tsv')"
+read -r model_id cwd ctx_total ctx_used_pct cost_usd duration_ms lines_added lines_removed <<< "$(echo "$input" | jq -r '[.model.id // .model.display_name // "?", .cwd // "", .context_window.context_window_size // 0, .context_window.used_percentage // 0, .cost.total_cost_usd // 0, .cost.total_duration_ms // 0, .cost.total_lines_added // 0, .cost.total_lines_removed // 0] | @tsv')"
 
 # Short model name
 case "$model_id" in
@@ -52,10 +70,7 @@ if [[ -d "$cwd" ]]; then
 fi
 
 # Defaults for context data
-[[ -z "$ctx_used" || "$ctx_used" == "null" ]] && ctx_used=0
-[[ -z "$ctx_remaining_pct" || "$ctx_remaining_pct" == "null" ]] && ctx_remaining_pct=0
-# If no tokens used, context is empty (0% used), not full (100% used)
-[[ "$ctx_used" -eq 0 ]] && ctx_remaining_pct=100
+[[ -z "$ctx_used_pct" || "$ctx_used_pct" == "null" ]] && ctx_used_pct=0
 
 # Progress bar builder
 bar() {
@@ -105,24 +120,52 @@ fi
 
 # Build output
 sep=" ${C_SEP}│${RST} "
-out="${C_MODEL}${BLD}${model}${RST}"
-out+="${sep}${C_DIR}${dir}${RST}"
-[[ -n "$branch" ]] && out+=" ${DIM}(${RST}${C_BRANCH}${branch}${RST}${DIM})${RST} ${git_st}"
 
-# Context bar (from Claude Code's actual data)
-ctx_used_pct=$((100 - ctx_remaining_pct))
-# Derive tokens from API percentage (input+output tokens undercount due to system prompts, cache, etc.)
+# Logo walls
+C_WALL='\033[38;5;237m'
+wl="${C_WALL}▏${RST}"
+wr="${C_WALL}▕${RST}"
+
+# Wrap logo with walls
+logo1_full="${wl}${logo1}${wr}"
+logo2_full="${wl}${logo2}${wr}"
+logo3_full="${wl}${logo3}${wr}"
+
+# Context bar (from Claude Code's used_percentage directly)
 ctx_used_display=$((ctx_total * ctx_used_pct / 100))
+
+# Format cost
+[[ -z "$cost_usd" || "$cost_usd" == "null" ]] && cost_usd=0
+cost_fmt=$(printf '%.2f' "$cost_usd" 2>/dev/null || echo "0.00")
+
+# Format duration (HH:MM format)
+[[ -z "$duration_ms" || "$duration_ms" == "null" ]] && duration_ms=0
+duration_s=$((duration_ms / 1000))
+duration_h=$((duration_s / 3600))
+duration_m=$((duration_s % 3600 / 60))
+duration_fmt=$(printf "%d:%02d" $duration_h $duration_m)
+
+# Format lines added/removed
+[[ -z "$lines_added" || "$lines_added" == "null" ]] && lines_added=0
+[[ -z "$lines_removed" || "$lines_removed" == "null" ]] && lines_removed=0
+lines_fmt="+${lines_added}/-${lines_removed}"
+
 
 # Choose color based on usage
 ctx_color="$C_BAR"
 [[ $ctx_used_pct -ge 90 ]] && ctx_color="$C_HIGH" || { [[ $ctx_used_pct -ge 70 ]] && ctx_color="$C_WARN"; }
 
-# Context usage bar
-out+="${sep}${DIM}Ctx${RST} $(bar $ctx_used_pct 100 8 $ctx_color) ${ctx_color}${ctx_used_pct}%${RST} ${DIM}$((ctx_used_display/1000))k/$((ctx_total/1000))k${RST}"
-
 c5=$(lim_color "$h5"); c7=$(lim_color "$d7")
-out+="${sep}${DIM}5h${RST} $(bar ${h5:-0} 100 8 $c5) ${c5}${h5}%${RST} ${DIM}($(time_until "$h5_r"))${RST}"
-out+="${sep}${DIM}7d${RST} $(bar ${d7:-0} 100 8 $c7) ${c7}${d7}%${RST} ${DIM}($(time_until "$d7_r"))${RST}"
 
-printf '%b\n' "$out"
+# Build lines
+data1="${C_MODEL}${BLD}${model}${RST}${sep}${C_DIR}${dir}${RST}"
+[[ -n "$branch" ]] && data1+=" ${DIM}(${RST}${C_BRANCH}${branch}${RST}${DIM})${RST} ${git_st}"
+[[ $lines_added -gt 0 || $lines_removed -gt 0 ]] && data1+="${sep}${C_OK}+${lines_added}${RST}${DIM}/${RST}${C_WARN}-${lines_removed}${RST}"
+data2="${DIM}5hr${RST} $(bar ${h5:-0} 100 8 $c5) ${c5}${h5}%${RST} ${DIM}($(time_until "$h5_r"))${RST}${sep}${DIM}wkl${RST} $(bar ${d7:-0} 100 8 $c7) ${c7}${d7}%${RST} ${DIM}($(time_until "$d7_r"))${RST}"
+data3="${DIM}ctx${RST} $(bar $ctx_used_pct 100 8 $ctx_color) ${ctx_color}${ctx_used_pct}%${RST} ${DIM}$((ctx_used_display/1000))k/$((ctx_total/1000))k${RST}${sep}${DIM}usd${RST} ${C_OK}\$${cost_fmt}${RST}${sep}${DIM}ttm${RST} ${C_OK}${duration_fmt}${RST}"
+
+printf '\n'
+printf '%b\n' "${logo1_full} ${data1}"
+printf '%b\n' "${logo2_full} ${data3}"
+printf '%b\n' "${logo3_full} ${data2}"
+printf '\n'

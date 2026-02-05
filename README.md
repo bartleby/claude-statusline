@@ -1,42 +1,44 @@
 # Claude Code Statusline
 
-Compact, colorful status line for [Claude Code](https://claude.ai/code) CLI showing **5-hour & 7-day rate limits**, context usage, model and git info in real time.
+Compact, colorful status line for [Claude Code](https://claude.ai/code) CLI with **18 themes**, real-time **rate limits**, context usage, cost tracking and git info.
 
 ![Preview](preview.png)
 
-## Why?
-
-Claude Code doesn't show your 5-hour and weekly rate limits in the UI. This statusline fetches them directly from Anthropic API so you always know how much capacity you have left.
-
 ## Features
 
-- **Context usage** — real-time token consumption with color-coded alerts (blue < 70%, yellow 70-89%, orange ≥ 90%)
-- **Rate limits** — 5-hour and 7-day usage with colored progress bars + time until reset
-- **Model name** — short colored name (Opus4.5, Sonnet4, Haiku)
-- **Directory & Git** — current folder, branch, uncommitted changes count
+- **18 Themes** — from Kratos to Spiderman, switch with `/skin` command
+- **Rate limits** — 5-hour and 7-day usage with progress bars + time until reset
+- **Context usage** — real-time token consumption with color-coded alerts
+- **Cost & Time** — session cost in USD and total time
+- **Git info** — branch name, uncommitted changes count
+- **Lines changed** — added/removed lines counter
 
-## Preview
+## Quick Install (macOS)
 
+```bash
+git clone https://github.com/anthropics/claude-statusline.git
+cd claude-statusline
+./install.sh
 ```
-Opus4.5 │ my-project (main) ✓ │ Ctx ▓▓░░░░░░ 28% 49k/200k │ 5h ▓░░░░░░░ 2% (4:11) │ 7d ▓▓░░░░░░ 24% (3d)
-```
 
-- `Ctx ▓▓░░░░░░ 28% 49k/200k` — context bar with percentage and token count
-- `5h 2% (4:11)` — 2% of 5-hour limit used, resets in 4 hours 11 minutes
-- `7d 24% (3d)` — 24% of weekly limit used, resets in 3 days
+Restart Claude Code and you're done!
 
-## Installation
+## Manual Installation (macOS)
 
-1. Copy scripts to Claude config directory:
+### 1. Copy scripts
 
 ```bash
 mkdir -p ~/.claude/scripts
-curl -o ~/.claude/scripts/context-bar.sh https://raw.githubusercontent.com/bartleby/claude-statusline/main/context-bar.sh
-curl -o ~/.claude/scripts/update-usage-cache.sh https://raw.githubusercontent.com/bartleby/claude-statusline/main/update-usage-cache.sh
+cp context-bar.sh ~/.claude/scripts/
+cp themes.sh ~/.claude/scripts/
+cp claude-skin.sh ~/.claude/scripts/
+cp update-usage-cache.sh ~/.claude/scripts/
 chmod +x ~/.claude/scripts/*.sh
 ```
 
-2. Add to `~/.claude/settings.json`:
+### 2. Configure statusline
+
+Add to `~/.claude/settings.json`:
 
 ```json
 {
@@ -47,26 +49,105 @@ chmod +x ~/.claude/scripts/*.sh
 }
 ```
 
-3. Restart Claude Code.
+### 3. (Optional) Enable /skin command
+
+Create hook file `~/.claude/hooks/skin-hook.sh`:
+
+```bash
+#!/bin/bash
+INPUT=$(cat)
+PROMPT=$(echo "$INPUT" | jq -r '.prompt // empty')
+
+if [[ "$PROMPT" =~ ^/skin ]]; then
+    ARG=$(echo "$PROMPT" | sed 's|^/skin[[:space:]]*||')
+    ~/.claude/scripts/claude-skin.sh $ARG >&2
+    exit 2
+fi
+exit 0
+```
+
+Make it executable:
+
+```bash
+chmod +x ~/.claude/hooks/skin-hook.sh
+```
+
+Add hook to `~/.claude/settings.json`:
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/scripts/context-bar.sh"
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/skin-hook.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### 4. Restart Claude Code
+
+## Themes
+
+18 themes available. Use `/skin` to see gallery or `/skin <name>` to apply.
+
+| Theme | Description |
+|-------|-------------|
+| **kratos** | God of War — red accent on cream (default) |
+| **spiderman** | Red mask, blue body |
+| **captain** | Captain America shield — star and stripes |
+| **shadow** | Monochrome grey |
+| **ocean** | Deep blue gradient |
+| **goose** | Grey-white with orange center |
+| **matrix** | Green terminal |
+| **sakura** | Soft pink cherry blossom |
+| **aurora** | Teal northern lights |
+| **ember** | Glowing orange coals |
+| **frost** | Ice blue crystal |
+| **odi** | White cat with pink nose |
+| **cyberpunk** | Pink and cyan neon |
+| **lavender** | Soft purple |
+| **gold** | Rich golden |
+| **inferno** | Intense red-orange fire |
+| **amethyst** | Deep purple crystal |
+| **bubblegum** | Bright pink |
+
+Press `Shift+Tab` to refresh statusline after changing skin.
 
 ## Requirements
 
-- macOS (uses `security` for Keychain access)
+- **macOS** (uses `security` for Keychain access)
 - `jq` — JSON processor (`brew install jq`)
 - `git` — for repository info
 
-> **Windows users**: See [windows/](windows/) folder for Python version that works on Windows.
+## Windows
+
+> **Note**: Theme system and `/skin` command are not yet available on Windows. See [windows/](windows/) folder for basic Python version.
 
 ## How it works
 
 ### Rate limits
-Fetches usage data from Anthropic API (`/api/oauth/usage`) using OAuth token from macOS Keychain. Data is cached and refreshed in background every 60 seconds — no lag in your statusline.
+Fetches usage data from Anthropic API using OAuth token from macOS Keychain. Data is cached and refreshed in background every 60 seconds.
 
 ### Context bar
-Uses `remaining_percentage` directly from Claude Code API to show accurate context usage with color-coded warnings:
-- **Blue** (< 70%) — plenty of context left
-- **Yellow** (70-89%) — approaching limit, be mindful of token usage
-- **Orange** (≥ 90%) — critical, context will auto-compact soon
+Uses `used_percentage` from Claude Code API with color-coded warnings:
+- **Normal** (< 70%) — plenty of context
+- **Warning** (70-89%) — approaching limit
+- **Critical** (≥ 90%) — will auto-compact soon
+
+### Themes
+All themes defined in `themes.sh`. Each theme sets UI colors and logo appearance. Current theme stored in `~/.claude/current_skin`.
 
 ## License
 
