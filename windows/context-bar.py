@@ -72,10 +72,14 @@ def load_theme() -> dict:
 def get_short_model(model_id: str) -> str:
     """Return short model name."""
     model_id = model_id.lower()
+    if 'opus' in model_id and ('4.6' in model_id or '4-6' in model_id):
+        return 'Opus4.6'
     if 'opus' in model_id and ('4.5' in model_id or '4-5' in model_id):
         return 'Opus4.5'
     if 'opus' in model_id and '4' in model_id:
         return 'Opus4'
+    if 'sonnet' in model_id and ('4.6' in model_id or '4-6' in model_id):
+        return 'Sonnet4.6'
     if 'sonnet' in model_id and ('4.5' in model_id or '4-5' in model_id):
         return 'Sonnet4.5'
     if 'sonnet' in model_id and '4' in model_id:
