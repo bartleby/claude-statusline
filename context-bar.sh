@@ -44,8 +44,10 @@ read -r model_id cwd ctx_total ctx_used_pct cost_usd duration_ms lines_added lin
 
 # Short model name
 case "$model_id" in
+    *opus*4*6*|*Opus*4.6*)     model="Opus4.6" ;;
     *opus*4*5*|*Opus*4.5*)     model="Opus4.5" ;;
     *opus*4*|*Opus*4*)         model="Opus4" ;;
+    *sonnet*4*6*|*Sonnet*4.6*) model="Sonnet4.6" ;;
     *sonnet*4*5*|*Sonnet*4.5*) model="Sonnet4.5" ;;
     *sonnet*4*|*Sonnet*4*)     model="Sonnet4" ;;
     *sonnet*|*Sonnet*)         model="Sonnet" ;;
