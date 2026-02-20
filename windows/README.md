@@ -11,7 +11,7 @@ All features from macOS/Linux version:
 - **21 Themes** — Full gallery with `/skin` command support
 - **Context usage** — Real-time token consumption with color-coded alerts
 - **Rate limits** — 5-hour and 7-day usage with progress bars + time until reset
-- **Model name** — Short colored name (Opus4.5, Sonnet4, Haiku)
+- **Model name** — Short colored name (Opus4.6, Opus4.5, Sonnet4.6, Sonnet4.5, Sonnet4, Haiku)
 - **Directory & Git** — Current folder, branch, uncommitted changes count
 - **Cost tracking** — Session cost in USD and total time
 - **Lines changed** — Added/removed lines counter

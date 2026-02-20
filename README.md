@@ -25,6 +25,12 @@ Compact, colorful status line for [Claude Code](https://claude.ai/code) CLI with
 curl -fsSL https://raw.githubusercontent.com/bartleby/claude-statusline/main/install.sh | bash
 ```
 
+Local testing (from repo checkout):
+
+```bash
+./install.sh --local
+```
+
 ### Windows (PowerShell)
 
 ```powershell
@@ -70,7 +76,7 @@ Press `Shift+Tab` to refresh statusline after changing skin.
 The statusline displays three rows of information:
 
 ```
-▏ ▐▛███▜▌ ▕ Opus4.5 │ my-project (main) ✓ │ +12/-3
+▏ ▐▛███▜▌ ▕ Opus4.6 │ my-project (main) ✓ │ +12/-3
 ▏▝▜█████▛▘▕ ctx ▓▓░░░░░░ 28% 49k/200k │ usd $0.42 │ ttm 1:23
 ▏  ▘▘ ▝▝  ▕ 5hr ▓░░░░░░░ 12% (4:11) │ wkl ▓▓░░░░░░ 24% (3d)
 ```

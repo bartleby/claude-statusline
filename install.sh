@@ -8,6 +8,12 @@ REPO_URL="https://raw.githubusercontent.com/bartleby/claude-statusline/main"
 CLAUDE_DIR="${HOME}/.claude"
 SCRIPTS_DIR="${CLAUDE_DIR}/scripts"
 HOOKS_DIR="${CLAUDE_DIR}/hooks"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LOCAL_MODE=0
+
+if [[ "${1:-}" == "--local" || "${CLAUDE_STATUSLINE_LOCAL:-}" == "1" ]]; then
+    LOCAL_MODE=1
+fi
 
 echo ""
 echo "Installing Claude Statusline..."
@@ -17,11 +23,19 @@ echo ""
 mkdir -p "$SCRIPTS_DIR"
 mkdir -p "$HOOKS_DIR"
 
-# Download scripts
-curl -fsSL "${REPO_URL}/context-bar.sh" -o "${SCRIPTS_DIR}/context-bar.sh"
-curl -fsSL "${REPO_URL}/themes.sh" -o "${SCRIPTS_DIR}/themes.sh"
-curl -fsSL "${REPO_URL}/claude-skin.sh" -o "${SCRIPTS_DIR}/claude-skin.sh"
-curl -fsSL "${REPO_URL}/update-usage-cache.sh" -o "${SCRIPTS_DIR}/update-usage-cache.sh"
+# Install scripts
+if [[ "$LOCAL_MODE" -eq 1 ]]; then
+    echo "Local mode enabled (copying from ${SCRIPT_DIR})"
+    cp "${SCRIPT_DIR}/context-bar.sh" "${SCRIPTS_DIR}/context-bar.sh"
+    cp "${SCRIPT_DIR}/themes.sh" "${SCRIPTS_DIR}/themes.sh"
+    cp "${SCRIPT_DIR}/claude-skin.sh" "${SCRIPTS_DIR}/claude-skin.sh"
+    cp "${SCRIPT_DIR}/update-usage-cache.sh" "${SCRIPTS_DIR}/update-usage-cache.sh"
+else
+    curl -fsSL "${REPO_URL}/context-bar.sh" -o "${SCRIPTS_DIR}/context-bar.sh"
+    curl -fsSL "${REPO_URL}/themes.sh" -o "${SCRIPTS_DIR}/themes.sh"
+    curl -fsSL "${REPO_URL}/claude-skin.sh" -o "${SCRIPTS_DIR}/claude-skin.sh"
+    curl -fsSL "${REPO_URL}/update-usage-cache.sh" -o "${SCRIPTS_DIR}/update-usage-cache.sh"
+fi
 
 # Make executable
 chmod +x "${SCRIPTS_DIR}/context-bar.sh"
