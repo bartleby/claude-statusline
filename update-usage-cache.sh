@@ -4,8 +4,12 @@
 export LC_ALL=C
 cache_file="${HOME}/.claude/usage_cache"
 
-# Получаем токен из Keychain
-TOKEN=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null | jq -r '.claudeAiOauth.accessToken // empty')
+# Получаем токен: macOS Keychain или Linux credentials file
+if [[ "$(uname)" == "Darwin" ]]; then
+    TOKEN=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null | jq -r '.claudeAiOauth.accessToken // empty')
+else
+    TOKEN=$(jq -r '.claudeAiOauth.accessToken // empty' "${HOME}/.claude/.credentials.json" 2>/dev/null)
+fi
 
 if [[ -z "$TOKEN" || "$TOKEN" == "null" ]]; then
     exit 1

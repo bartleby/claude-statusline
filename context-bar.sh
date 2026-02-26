@@ -40,7 +40,7 @@ fi
 
 # Parse input JSON once
 input=$(cat)
-read -r model_id cwd ctx_total ctx_used_pct cost_usd duration_ms lines_added lines_removed <<< "$(echo "$input" | jq -r '[.model.id // .model.display_name // "?", .cwd // "", .context_window.context_window_size // 0, .context_window.used_percentage // 0, .cost.total_cost_usd // 0, .cost.total_duration_ms // 0, .cost.total_lines_added // 0, .cost.total_lines_removed // 0] | @tsv')"
+IFS=$'\t' read -r model_id cwd ctx_total ctx_used_pct cost_usd duration_ms lines_added lines_removed <<< "$(echo "$input" | jq -r '[.model.id // .model.display_name // "?", .cwd // "", .context_window.context_window_size // 0, .context_window.used_percentage // 0, .cost.total_cost_usd // 0, .cost.total_duration_ms // 0, .cost.total_lines_added // 0, .cost.total_lines_removed // 0] | @tsv')"
 
 # Short model name
 case "$model_id" in
@@ -71,8 +71,10 @@ if [[ -d "$cwd" ]]; then
     fi
 fi
 
-# Defaults for context data
+# Defaults for context data — ensure integers for bash arithmetic
 [[ -z "$ctx_used_pct" || "$ctx_used_pct" == "null" ]] && ctx_used_pct=0
+ctx_used_pct=$(printf "%.0f" "$ctx_used_pct" 2>/dev/null || echo 0)
+ctx_total=$(printf "%.0f" "$ctx_total" 2>/dev/null || echo 200000)
 
 # Progress bar builder
 bar() {
