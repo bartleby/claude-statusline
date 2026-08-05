@@ -72,6 +72,12 @@ def load_theme() -> dict:
 def get_short_model(model_id: str) -> str:
     """Return short model name."""
     model_id = model_id.lower()
+    if 'fable' in model_id:
+        return 'Fable5'
+    if 'opus-5' in model_id or 'opus 5' in model_id:
+        return 'Opus5'
+    if 'sonnet-5' in model_id or 'sonnet 5' in model_id:
+        return 'Sonnet5'
     if 'opus' in model_id and ('4.6' in model_id or '4-6' in model_id):
         return 'Opus4.6'
     if 'opus' in model_id and ('4.5' in model_id or '4-5' in model_id):
@@ -86,6 +92,8 @@ def get_short_model(model_id: str) -> str:
         return 'Sonnet4'
     if 'sonnet' in model_id:
         return 'Sonnet'
+    if 'haiku' in model_id and ('4.5' in model_id or '4-5' in model_id):
+        return 'Haiku4.5'
     if 'haiku' in model_id:
         return 'Haiku'
     return '?'
@@ -123,16 +131,30 @@ def get_git_info(cwd: str, theme: dict) -> tuple[str, str]:
 
 
 def get_context_info(data: dict) -> tuple[int, int, int]:
-    """Extract context info from Claude Code JSON."""
+    """Extract (used_pct, used_tokens, ctx_size) from Claude Code JSON."""
     context_window = data.get('context_window', {})
 
-    ctx_size = context_window.get('context_window_size', 200000)
-    used_pct = context_window.get('used_percentage', 0)
+    ctx_size = int(context_window.get('context_window_size') or 0) or 200000
+    model_id = (data.get('model') or {}).get('id') or ''
 
-    if used_pct is None or used_pct == 'null':
-        used_pct = 0
+    # 1M-context models: Claude Code reports context_window_size=200000 even
+    # when the model id carries the [1m] suffix — restore the real window
+    if '[1m]' in model_id or data.get('exceeds_200k_tokens'):
+        ctx_size = max(ctx_size, 1_000_000)
 
-    return int(used_pct), int(ctx_size)
+    # Prefer the real token count — used_percentage is computed against the
+    # reported 200k window, so it is wrong for 1M models
+    used_tokens = int(context_window.get('total_input_tokens') or 0)
+    if used_tokens > 0:
+        used_pct = used_tokens * 100 // ctx_size
+    else:
+        used_pct = context_window.get('used_percentage') or 0
+        if used_pct == 'null':
+            used_pct = 0
+        used_pct = int(round(float(used_pct)))
+        used_tokens = ctx_size * used_pct // 100
+
+    return int(used_pct), used_tokens, ctx_size
 
 
 def bar(val: int, max_val: int, length: int, color: str, empty_color: str) -> str:
@@ -252,8 +274,7 @@ def main():
     branch, git_st = get_git_info(cwd, theme)
 
     # Context info from Claude Code API
-    ctx_used_pct, ctx_size = get_context_info(data)
-    ctx_used_display = ctx_size * ctx_used_pct // 100
+    ctx_used_pct, ctx_used_display, ctx_size = get_context_info(data)
 
     # Cost and duration
     cost_data = data.get('cost', {})
@@ -306,7 +327,9 @@ def main():
 
     # Line 2: Context, Cost, Duration
     ctx_bar = bar(ctx_used_pct, 100, 8, ctx_color, theme['C_BAR_E'])
-    data2 = f"{DIM}ctx{RST} {ctx_bar} {ctx_color}{ctx_used_pct}%{RST} {DIM}{ctx_used_display//1000}k/{ctx_size//1000}k{RST}"
+    # Show 1M-sized windows as "1M" instead of "1000k"
+    ctx_total_fmt = f'{ctx_size//1_000_000}M' if ctx_size >= 1_000_000 else f'{ctx_size//1000}k'
+    data2 = f"{DIM}ctx{RST} {ctx_bar} {ctx_color}{ctx_used_pct}%{RST} {DIM}{ctx_used_display//1000}k/{ctx_total_fmt}{RST}"
     data2 += f"{sep}{DIM}usd{RST} {theme['C_OK']}${cost_fmt}{RST}"
     data2 += f"{sep}{DIM}ttm{RST} {theme['C_OK']}{duration_fmt}{RST}"
 

@@ -40,10 +40,13 @@ fi
 
 # Parse input JSON once
 input=$(cat)
-IFS=$'\t' read -r model_id cwd ctx_total ctx_used_pct cost_usd duration_ms lines_added lines_removed <<< "$(echo "$input" | jq -r '[.model.id // .model.display_name // "?", .cwd // "", .context_window.context_window_size // 0, .context_window.used_percentage // 0, .cost.total_cost_usd // 0, .cost.total_duration_ms // 0, .cost.total_lines_added // 0, .cost.total_lines_removed // 0] | @tsv')"
+IFS=$'\t' read -r model_id cwd ctx_total ctx_used_pct ctx_used_tokens exceeds_200k cost_usd duration_ms lines_added lines_removed <<< "$(echo "$input" | jq -r '[.model.id // .model.display_name // "?", .cwd // "", .context_window.context_window_size // 0, .context_window.used_percentage // 0, .context_window.total_input_tokens // 0, .exceeds_200k_tokens // false, .cost.total_cost_usd // 0, .cost.total_duration_ms // 0, .cost.total_lines_added // 0, .cost.total_lines_removed // 0] | @tsv')"
 
 # Short model name
 case "$model_id" in
+    *fable*|*Fable*)           model="Fable5" ;;
+    *opus-5*|*"Opus 5"*)       model="Opus5" ;;
+    *sonnet-5*|*"Sonnet 5"*)   model="Sonnet5" ;;
     *opus*4*6*|*Opus*4.6*)     model="Opus4.6" ;;
     *opus*4*5*|*Opus*4.5*)     model="Opus4.5" ;;
     *opus*4*|*Opus*4*)         model="Opus4" ;;
@@ -51,12 +54,19 @@ case "$model_id" in
     *sonnet*4*5*|*Sonnet*4.5*) model="Sonnet4.5" ;;
     *sonnet*4*|*Sonnet*4*)     model="Sonnet4" ;;
     *sonnet*|*Sonnet*)         model="Sonnet" ;;
+    *haiku*4*5*|*Haiku*4.5*)   model="Haiku4.5" ;;
     *haiku*|*Haiku*)           model="Haiku" ;;
     *)                         model="?" ;;
 esac
 
 # Context window from JSON
-[[ -z "$ctx_total" || "$ctx_total" == "0" ]] && ctx_total=200000
+[[ -z "$ctx_total" || "$ctx_total" == "0" || "$ctx_total" == "null" ]] && ctx_total=200000
+
+# 1M-context models: Claude Code reports context_window_size=200000 even when
+# the model id carries the [1m] suffix, so the real window is restored here
+if [[ "$model_id" == *"[1m]"* || "$exceeds_200k" == "true" ]]; then
+    [[ "$ctx_total" -lt 1000000 ]] && ctx_total=1000000
+fi
 
 # Directory and git
 dir=$(basename "$cwd" 2>/dev/null)
@@ -75,6 +85,7 @@ fi
 [[ -z "$ctx_used_pct" || "$ctx_used_pct" == "null" ]] && ctx_used_pct=0
 ctx_used_pct=$(printf "%.0f" "$ctx_used_pct" 2>/dev/null || echo 0)
 ctx_total=$(printf "%.0f" "$ctx_total" 2>/dev/null || echo 200000)
+[[ -z "$ctx_used_tokens" || "$ctx_used_tokens" == "null" ]] && ctx_used_tokens=0
 
 # Progress bar builder
 bar() {
@@ -97,7 +108,9 @@ time_until() {
     if [[ "$(uname)" == "Darwin" ]]; then
         local ts=$(date -j -u -f "%Y-%m-%dT%H:%M:%S" "${t%%.*}" "+%s" 2>/dev/null)
     else
-        local ts=$(date -u -d "${t%%.*}" "+%s" 2>/dev/null)
+        # GNU date parses the full ISO string (incl. timezone); stripping the
+        # fractional part would also drop "+00:00" and shift the time to local
+        local ts=$(TZ=UTC0 date -d "$t" "+%s" 2>/dev/null)
     fi
     [[ -z "$ts" ]] && { echo "?"; return; }
     local d=$((ts - $(date -u +%s)))
@@ -143,8 +156,18 @@ logo1_full="${wl}${logo1}${wr}"
 logo2_full="${wl}${logo2}${wr}"
 logo3_full="${wl}${logo3}${wr}"
 
-# Context bar (from Claude Code's used_percentage directly)
-ctx_used_display=$((ctx_total * ctx_used_pct / 100))
+# Context usage: prefer the real token count — used_percentage is computed
+# against the reported 200k window, so it is wrong for 1M models
+if [[ "$ctx_used_tokens" -gt 0 ]]; then
+    ctx_used_display=$ctx_used_tokens
+    ctx_used_pct=$((ctx_used_tokens * 100 / ctx_total))
+else
+    ctx_used_display=$((ctx_total * ctx_used_pct / 100))
+fi
+
+# Show 1M-sized windows as "1M" instead of "1000k"
+ctx_total_fmt="$((ctx_total/1000))k"
+[[ "$ctx_total" -ge 1000000 ]] && ctx_total_fmt="$((ctx_total/1000000))M"
 
 # Format cost
 [[ -z "$cost_usd" || "$cost_usd" == "null" ]] && cost_usd=0
@@ -174,7 +197,7 @@ data1="${C_MODEL}${BLD}${model}${RST}${sep}${C_DIR}${dir}${RST}"
 [[ -n "$branch" ]] && data1+=" ${DIM}(${RST}${C_BRANCH}${branch}${RST}${DIM})${RST} ${git_st}"
 [[ $lines_added -gt 0 || $lines_removed -gt 0 ]] && data1+="${sep}${C_OK}+${lines_added}${RST}${DIM}/${RST}${C_WARN}-${lines_removed}${RST}"
 data2="${DIM}5hr${RST} $(bar ${h5:-0} 100 8 $c5) ${c5}${h5}%${RST} ${DIM}($(time_until "$h5_r"))${RST}${sep}${DIM}wkl${RST} $(bar ${d7:-0} 100 8 $c7) ${c7}${d7}%${RST} ${DIM}($(time_until "$d7_r"))${RST}"
-data3="${DIM}ctx${RST} $(bar $ctx_used_pct 100 8 $ctx_color) ${ctx_color}${ctx_used_pct}%${RST} ${DIM}$((ctx_used_display/1000))k/$((ctx_total/1000))k${RST}${sep}${DIM}usd${RST} ${C_OK}\$${cost_fmt}${RST}${sep}${DIM}ttm${RST} ${C_OK}${duration_fmt}${RST}"
+data3="${DIM}ctx${RST} $(bar $ctx_used_pct 100 8 $ctx_color) ${ctx_color}${ctx_used_pct}%${RST} ${DIM}$((ctx_used_display/1000))k/${ctx_total_fmt}${RST}${sep}${DIM}usd${RST} ${C_OK}\$${cost_fmt}${RST}${sep}${DIM}ttm${RST} ${C_OK}${duration_fmt}${RST}"
 
 printf '\n'
 printf '%b\n' "${logo1_full} ${data1}"
