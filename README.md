@@ -1,3 +1,5 @@
+
+
 ![Header](header.png)
 
 # Claude Code Statusline
@@ -128,7 +130,7 @@ irm https://raw.githubusercontent.com/bartleby/claude-statusline/main/windows/un
 - `git` — for repository info
 
 ### Windows
-- Python 3.8+ (from [python.org](https://python.org) or Microsoft Store)
+- Python 3.9+ (from [python.org](https://python.org) or Microsoft Store)
 - `git` — for repository info
 - `keyring` package (optional, for rate limits): `pip install keyring`
 
