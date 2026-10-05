@@ -2,13 +2,20 @@
 # Фоновое обновление кэша usage limits через Anthropic API
 
 export LC_ALL=C
-cache_file="${HOME}/.claude/usage_cache"
+config_dir="${CLAUDE_CONFIG_DIR:-${HOME}/.claude}"
+cache_file="${config_dir}/usage_cache"
+
+# Профиль с CLAUDE_CONFIG_DIR хранит токен под отдельным именем в Keychain
+keychain_service="Claude Code-credentials"
+if [[ -n "$CLAUDE_CONFIG_DIR" ]]; then
+    keychain_service="${keychain_service}-$(printf '%s' "$CLAUDE_CONFIG_DIR" | shasum -a 256 | cut -c1-8)"
+fi
 
 # Получаем токен: macOS Keychain или Linux credentials file
 if [[ "$(uname)" == "Darwin" ]]; then
-    TOKEN=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null | jq -r '.claudeAiOauth.accessToken // empty')
+    TOKEN=$(security find-generic-password -s "$keychain_service" -w 2>/dev/null | jq -r '.claudeAiOauth.accessToken // empty')
 else
-    TOKEN=$(jq -r '.claudeAiOauth.accessToken // empty' "${HOME}/.claude/.credentials.json" 2>/dev/null)
+    TOKEN=$(jq -r '.claudeAiOauth.accessToken // empty' "${config_dir}/.credentials.json" 2>/dev/null)
 fi
 
 if [[ -z "$TOKEN" || "$TOKEN" == "null" ]]; then

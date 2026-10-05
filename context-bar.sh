@@ -127,7 +127,7 @@ lim_color() {
 }
 
 # Usage limits from cache
-cache="${HOME}/.claude/usage_cache"
+cache="${CLAUDE_CONFIG_DIR:-${HOME}/.claude}/usage_cache"
 h5="?" d7="?" h5_r="" d7_r=""
 if [[ -f "$cache" ]]; then
     if [[ "$(uname)" == "Darwin" ]]; then
