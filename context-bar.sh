@@ -42,22 +42,24 @@ fi
 input=$(cat)
 IFS=$'\t' read -r model_id cwd ctx_total ctx_used_pct ctx_used_tokens exceeds_200k cost_usd duration_ms lines_added lines_removed <<< "$(echo "$input" | jq -r '[.model.id // .model.display_name // "?", .cwd // "", .context_window.context_window_size // 0, .context_window.used_percentage // 0, .context_window.total_input_tokens // 0, .exceeds_200k_tokens // false, .cost.total_cost_usd // 0, .cost.total_duration_ms // 0, .cost.total_lines_added // 0, .cost.total_lines_removed // 0] | @tsv')"
 
-# Short model name
-case "$model_id" in
-    *fable*|*Fable*)           model="Fable5" ;;
-    *opus-5*|*"Opus 5"*)       model="Opus5" ;;
-    *sonnet-5*|*"Sonnet 5"*)   model="Sonnet5" ;;
-    *opus*4*6*|*Opus*4.6*)     model="Opus4.6" ;;
-    *opus*4*5*|*Opus*4.5*)     model="Opus4.5" ;;
-    *opus*4*|*Opus*4*)         model="Opus4" ;;
-    *sonnet*4*6*|*Sonnet*4.6*) model="Sonnet4.6" ;;
-    *sonnet*4*5*|*Sonnet*4.5*) model="Sonnet4.5" ;;
-    *sonnet*4*|*Sonnet*4*)     model="Sonnet4" ;;
-    *sonnet*|*Sonnet*)         model="Sonnet" ;;
-    *haiku*4*5*|*Haiku*4.5*)   model="Haiku4.5" ;;
-    *haiku*|*Haiku*)           model="Haiku" ;;
-    *)                         model="?" ;;
-esac
+# Short model name: display_name without spaces ("Opus 5.5" -> "Opus5.5"),
+# falling back to parsing the id ("claude-opus-5-5[1m]" -> "Opus5.5")
+model=$(echo "$input" | jq -r '.model.display_name // empty')
+model="${model%% (*}"
+model="${model// /}"
+if [[ -z "$model" ]]; then
+    id="${model_id#claude-}"
+    id="${id%%\[*}"
+    [[ "$id" =~ -[0-9]{8}$ ]] && id="${id%-*}"
+    family="" version=""
+    IFS='-' read -ra parts <<< "$id"
+    for p in "${parts[@]}"; do
+        if [[ "$p" =~ ^[0-9]+$ ]]; then version+="${version:+.}$p"
+        else family="$(tr '[:lower:]' '[:upper:]' <<< "${p:0:1}")${p:1}"; fi
+    done
+    model="${family}${version}"
+    [[ -z "$model" ]] && model="?"
+fi
 
 # Context window from JSON
 [[ -z "$ctx_total" || "$ctx_total" == "0" || "$ctx_total" == "null" ]] && ctx_total=200000
