@@ -103,9 +103,13 @@ Progress bars change color based on usage:
 /skin              # Show all 21 themes in gallery
 /skin kratos       # Apply kratos theme
 /skin spiderman    # Apply spiderman theme
+/skin here matrix  # Use matrix in the current folder and its subfolders
+/skin here off     # Remove the current folder's skin
 ```
 
 After applying a theme, press `Shift+Tab` to refresh the statusline.
+
+Folder skins are stored in `~/.claude/skin_dirs` (`<path><TAB><skin>` per line) and override the global skin; the most specific matching folder wins.
 
 ## Uninstall
 

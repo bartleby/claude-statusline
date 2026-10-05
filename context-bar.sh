@@ -70,6 +70,15 @@ if [[ "$model_id" == *"[1m]"* || "$exceeds_200k" == "true" ]]; then
     [[ "$ctx_total" -lt 1000000 ]] && ctx_total=1000000
 fi
 
+# Per-folder skin: longest matching path prefix in skin_dirs overrides the global skin
+SKIN_DIRS="${HOME}/.claude/skin_dirs"
+if [[ -f "$SKIN_DIRS" && -n "$cwd" ]] && declare -F load_theme >/dev/null; then
+    dir_skin=$(awk -F'\t' -v cwd="$cwd" '
+        (cwd == $1 || index(cwd, $1 "/") == 1) && length($1) > best { best = length($1); skin = $2 }
+        END { print skin }' "$SKIN_DIRS")
+    [[ -n "$dir_skin" ]] && load_theme "$dir_skin"
+fi
+
 # Directory and git
 dir=$(basename "$cwd" 2>/dev/null)
 [[ -z "$dir" ]] && dir="?"

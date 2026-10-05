@@ -1,10 +1,13 @@
 #!/bin/bash
 # Claude Skin Selector
 # Usage: claude-skin.sh          - show gallery
-#        claude-skin.sh <name>   - apply theme
+#        claude-skin.sh <name>   - apply theme globally
+#        claude-skin.sh here <name|off> - set/clear skin for the current folder (SKIN_CWD or $PWD)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_FILE="${HOME}/.claude/current_skin"
+DIRS_FILE="${HOME}/.claude/skin_dirs"
+TARGET_DIR="${SKIN_CWD:-$PWD}"
 
 # Ensure config directory exists
 mkdir -p "${HOME}/.claude"
@@ -117,7 +120,13 @@ show_gallery() {
         current=$(cat "$CONFIG_FILE")
         echo "Current: $current"
     fi
-    echo "Usage: /skin <name>"
+    if [[ -f "$DIRS_FILE" ]]; then
+        here=$(awk -F'\t' -v cwd="$TARGET_DIR" '
+            (cwd == $1 || index(cwd, $1 "/") == 1) && length($1) > best { best = length($1); line = $1 " -> " $2 }
+            END { print line }' "$DIRS_FILE")
+        [[ -n "$here" ]] && echo "Folder: $here"
+    fi
+    echo "Usage: /skin <name>  |  /skin here <name>  |  /skin here off"
     echo "Press Shift+Tab to refresh statusline after applying"
     echo ""
 }
@@ -140,9 +149,46 @@ apply_theme() {
     echo "Press Shift+Tab to refresh statusline"
 }
 
+# Remove the exact TARGET_DIR entry from the folder map
+clear_dir() {
+    [[ -f "$DIRS_FILE" ]] || return 0
+    awk -F'\t' -v d="$TARGET_DIR" '$1 != d' "$DIRS_FILE" > "${DIRS_FILE}.tmp" && mv "${DIRS_FILE}.tmp" "$DIRS_FILE"
+}
+
+# Bind a theme to TARGET_DIR (and its subfolders)
+apply_dir_theme() {
+    local name="$1"
+    name=$(echo "$name" | tr '[:upper:]' '[:lower:]')
+
+    if [[ -z "$name" ]]; then
+        echo "Usage: /skin here <name>  |  /skin here off"
+        return 1
+    fi
+
+    if [[ "$name" == "off" ]]; then
+        clear_dir
+        echo "Folder skin removed: $TARGET_DIR"
+        echo "Press Shift+Tab to refresh statusline"
+        return 0
+    fi
+
+    if ! echo "$THEMES" | grep -qw "$name"; then
+        echo "Unknown skin: $name"
+        echo "Available: $THEMES"
+        return 1
+    fi
+
+    clear_dir
+    printf '%s\t%s\n' "$TARGET_DIR" "$name" >> "$DIRS_FILE"
+    echo "Skin applied to $TARGET_DIR: $name"
+    echo "Press Shift+Tab to refresh statusline"
+}
+
 # Main
 if [[ $# -eq 0 ]]; then
     show_gallery
+elif [[ "$1" == "here" ]]; then
+    apply_dir_theme "$2"
 else
     apply_theme "$1"
 fi

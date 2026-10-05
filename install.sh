@@ -37,6 +37,7 @@ cat > "${HOOKS_DIR}/skin-hook.sh" << 'EOF'
 
 INPUT=$(cat)
 PROMPT=$(echo "$INPUT" | jq -r '.prompt // empty')
+CWD=$(echo "$INPUT" | jq -r '.cwd // empty')
 
 # Check if command starts with /skin
 if [[ "$PROMPT" =~ ^/skin ]]; then
@@ -44,7 +45,7 @@ if [[ "$PROMPT" =~ ^/skin ]]; then
     ARG=$(echo "$PROMPT" | sed 's|^/skin[[:space:]]*||')
 
     # Run the skin script and redirect stdout to stderr (Claude Code shows stderr)
-    ~/.claude/scripts/claude-skin.sh $ARG >&2
+    SKIN_CWD="$CWD" ~/.claude/scripts/claude-skin.sh $ARG >&2
 
     # Exit code 2 = block the prompt from going to AI
     exit 2
@@ -67,7 +68,7 @@ command: ~/.claude/scripts/claude-skin.sh
 user-invocable: true
 ---
 
-Apply a skin theme. Run without arguments to see gallery, or with skin name to apply.
+Apply a skin theme. Run without arguments to see gallery, with skin name to apply, or `here <name|off>` to set a skin for the current folder.
 EOF
 echo "✓ Skill installed to ${SKILLS_DIR}"
 
